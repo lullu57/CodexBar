@@ -329,6 +329,13 @@ final class SessionQuotaNotifier: SessionQuotaNotifying {
         let idPrefix = "session-\(providerText)-\(transitionText)"
         self.logger.info("enqueuing", metadata: ["prefix": idPrefix])
         AppNotifications.shared.post(idPrefix: idPrefix, title: title, body: body, badge: badge)
+
+        if transition == .depleted {
+            PhoneNotifications.shared.send(
+                title: title,
+                body: body,
+                topic: UserDefaults.standard.string(forKey: "phoneNotificationTopic") ?? "")
+        }
     }
 
     func postQuotaWarning(

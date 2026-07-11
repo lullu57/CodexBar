@@ -488,6 +488,8 @@ extension SettingsStore {
             debugKeepCLISessionsAlive: debugKeepCLISessionsAlive,
             statusChecksEnabled: notificationDefaults.statusChecksEnabled,
             sessionQuotaNotificationsEnabled: notificationDefaults.sessionQuotaNotificationsEnabled,
+            phoneNotificationsEnabled: userDefaults.object(forKey: "phoneNotificationsEnabled") as? Bool ?? false,
+            phoneNotificationTopic: userDefaults.string(forKey: "phoneNotificationTopic") ?? "",
             quotaWarningNotificationsEnabled: quotaWarnings.notificationsEnabled,
             predictivePaceWarningNotificationsEnabled: notificationDefaults.predictivePaceWarningNotificationsEnabled,
             quotaWarningThresholdsRaw: quotaWarnings.thresholdsRaw,

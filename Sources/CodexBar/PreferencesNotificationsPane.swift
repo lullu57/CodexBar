@@ -13,6 +13,34 @@ struct NotificationsPane: View {
                         subtitle: L("session_quota_notifications_subtitle"))
                 }
 
+                Toggle(isOn: self.$settings.phoneNotificationsEnabled) {
+                    SettingsRowLabel(
+                        "Phone notifications",
+                        subtitle: "Send depleted-quota alerts to your phone through ntfy.")
+                }
+
+                if self.settings.phoneNotificationsEnabled {
+                    VStack(alignment: .leading, spacing: 8) {
+                        TextField(
+                            "ntfy topic",
+                            text: self.$settings.phoneNotificationTopic,
+                            prompt: Text("e.g. codexbar-your-random-topic"))
+                        .textFieldStyle(.roundedBorder)
+
+                        HStack {
+                            Text("Subscribe to this exact topic in the ntfy app.")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Button("Send test") {
+                                PhoneNotifications.shared.sendTest(topic: self.settings.phoneNotificationTopic)
+                            }
+                            .disabled(self.settings.phoneNotificationTopic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                        }
+                    }
+                    .padding(.leading, 22)
+                }
+
                 Toggle(isOn: self.$settings.quotaWarningNotificationsEnabled) {
                     SettingsRowLabel(
                         L("threshold_warnings_title"),

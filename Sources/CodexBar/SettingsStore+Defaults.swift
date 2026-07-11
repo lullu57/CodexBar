@@ -122,6 +122,25 @@ extension SettingsStore {
         }
     }
 
+    var phoneNotificationsEnabled: Bool {
+        get { self.defaultsState.phoneNotificationsEnabled }
+        set {
+            self.defaultsState.phoneNotificationsEnabled = newValue
+            self.userDefaults.set(newValue, forKey: "phoneNotificationsEnabled")
+            self.noteBackgroundWorkSettingsChanged()
+        }
+    }
+
+    var phoneNotificationTopic: String {
+        get { self.defaultsState.phoneNotificationTopic }
+        set {
+            self.defaultsState.phoneNotificationTopic = newValue
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            self.userDefaults.set(self.defaultsState.phoneNotificationTopic, forKey: "phoneNotificationTopic")
+            self.noteBackgroundWorkSettingsChanged()
+        }
+    }
+
     var quotaWarningNotificationsEnabled: Bool {
         get { self.defaultsState.quotaWarningNotificationsEnabled }
         set {

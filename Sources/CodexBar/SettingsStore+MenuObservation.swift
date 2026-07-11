@@ -11,6 +11,8 @@ extension SettingsStore {
         _ = self.debugKeepCLISessionsAlive
         _ = self.statusChecksEnabled
         _ = self.sessionQuotaNotificationsEnabled
+        _ = self.phoneNotificationsEnabled
+        _ = self.phoneNotificationTopic
         _ = self.quotaWarningNotificationsEnabled
         _ = self.predictivePaceWarningNotificationsEnabled
         _ = self.quotaWarningThresholds

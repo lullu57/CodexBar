@@ -12,6 +12,8 @@ struct SettingsDefaultsState {
     var debugKeepCLISessionsAlive: Bool
     var statusChecksEnabled: Bool
     var sessionQuotaNotificationsEnabled: Bool
+    var phoneNotificationsEnabled: Bool
+    var phoneNotificationTopic: String
     var quotaWarningNotificationsEnabled: Bool
     var predictivePaceWarningNotificationsEnabled: Bool
     var quotaWarningThresholdsRaw: [Int]
