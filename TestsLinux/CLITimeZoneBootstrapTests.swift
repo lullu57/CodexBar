@@ -5,7 +5,7 @@ import Testing
 struct CLITimeZoneBootstrapTests {
     @Test
     func `derives IANA identifier from resolved zoneinfo path`() {
-        #expect(CodexBarCLI.linuxTimeZoneFallback(
+        #expect(CodexBarCLI.linuxTimeZoneBootstrapIdentifier(
             currentValue: nil,
             localTimeReadable: true,
             resolvedLocalTimePath: "/nix/store/hash-tzdata/share/zoneinfo/America/New_York")
@@ -22,16 +22,16 @@ struct CLITimeZoneBootstrapTests {
     }
 
     @Test
-    func `uses localtime file when no identifier can be derived`() {
-        #expect(CodexBarCLI.linuxTimeZoneFallback(
+    func `does not bootstrap an unrecognized localtime path`() {
+        #expect(CodexBarCLI.linuxTimeZoneBootstrapIdentifier(
             currentValue: nil,
             localTimeReadable: true,
-            resolvedLocalTimePath: "/etc/localtime") == ":/etc/localtime")
+            resolvedLocalTimePath: "/etc/localtime") == nil)
     }
 
     @Test(arguments: ["Asia/Kolkata", "", ":/custom/zoneinfo"])
     func `preserves caller timezone`(currentValue: String) {
-        #expect(CodexBarCLI.linuxTimeZoneFallback(
+        #expect(CodexBarCLI.linuxTimeZoneBootstrapIdentifier(
             currentValue: currentValue,
             localTimeReadable: true,
             resolvedLocalTimePath: "/nix/store/hash-tzdata/share/zoneinfo/Asia/Kolkata") == nil)
@@ -39,7 +39,7 @@ struct CLITimeZoneBootstrapTests {
 
     @Test
     func `does not set an unreadable localtime file`() {
-        #expect(CodexBarCLI.linuxTimeZoneFallback(
+        #expect(CodexBarCLI.linuxTimeZoneBootstrapIdentifier(
             currentValue: nil,
             localTimeReadable: false,
             resolvedLocalTimePath: "/nix/store/hash-tzdata/share/zoneinfo/Asia/Kolkata") == nil)
@@ -61,6 +61,7 @@ struct CLITimeZoneBootstrapTests {
             filePath: "/dev/null"))
     }
 
+    #if os(Linux)
     @Test
     func `primes the legacy formatter bridge with system timezone data`() throws {
         let resolvedPath = URL(fileURLWithPath: "/etc/localtime").resolvingSymlinksInPath().path
@@ -77,4 +78,5 @@ struct CLITimeZoneBootstrapTests {
         formatter.dateFormat = "yyyy-MM-dd HH:mm:ss"
         #expect(!formatter.string(from: Date(timeIntervalSince1970: 0)).isEmpty)
     }
+    #endif
 }

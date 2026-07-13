@@ -206,16 +206,13 @@ enum CodexBarCLI {
 
     // MARK: - Helpers
 
-    static func linuxTimeZoneFallback(
+    static func linuxTimeZoneBootstrapIdentifier(
         currentValue: String?,
         localTimeReadable: Bool,
         resolvedLocalTimePath: String?) -> String?
     {
         guard currentValue == nil, localTimeReadable else { return nil }
-        if let identifier = self.linuxTimeZoneIdentifier(from: resolvedLocalTimePath) {
-            return identifier
-        }
-        return ":/etc/localtime"
+        return self.linuxTimeZoneIdentifier(from: resolvedLocalTimePath)
     }
 
     static func linuxTimeZoneIdentifier(from resolvedLocalTimePath: String?) -> String? {
@@ -240,19 +237,17 @@ enum CodexBarCLI {
         let currentValue = getenv("TZ").map { String(cString: $0) }
         let localTimeReadable = access("/etc/localtime", R_OK) == 0
         let resolvedLocalTimePath = self.resolvedLinuxLocalTimePath()
-        guard let fallback = self.linuxTimeZoneFallback(
+        guard let identifier = self.linuxTimeZoneBootstrapIdentifier(
             currentValue: currentValue,
             localTimeReadable: localTimeReadable,
             resolvedLocalTimePath: resolvedLocalTimePath)
         else { return }
 
-        if let identifier = self.linuxTimeZoneIdentifier(from: resolvedLocalTimePath) {
-            _ = self.primeCoreFoundationTimeZone(identifier: identifier, filePath: "/etc/localtime")
-        }
+        guard self.primeCoreFoundationTimeZone(identifier: identifier, filePath: "/etc/localtime") else { return }
 
-        // Prefer the IANA identifier so FoundationEssentials retains DST rules. Legacy formatters
-        // use the CoreFoundation cache primed above when /usr/share/zoneinfo is unavailable.
-        setenv("TZ", fallback, 0)
+        // FoundationEssentials reads the IANA identifier while legacy formatters use the
+        // CoreFoundation cache primed above when /usr/share/zoneinfo is unavailable.
+        setenv("TZ", identifier, 0)
         #endif
     }
 
@@ -304,7 +299,9 @@ enum CodexBarCLI {
 
     static func effectiveArgv(_ argv: [String]) -> [String] {
         guard let first = argv.first else { return ["usage"] }
-        if first.hasPrefix("-") { return ["usage"] + argv }
+        if first.hasPrefix("-") {
+            return ["usage"] + argv
+        }
         return argv
     }
 }
