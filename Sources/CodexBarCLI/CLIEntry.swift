@@ -1,5 +1,8 @@
 import CodexBarCore
 import Commander
+#if os(Linux)
+import CoreFoundation
+#endif
 #if canImport(Darwin)
 import Darwin
 #elseif canImport(Glibc)
@@ -203,23 +206,82 @@ enum CodexBarCLI {
 
     // MARK: - Helpers
 
-    static func linuxTimeZoneFallback(currentValue: String?, localTimeReadable: Bool) -> String? {
+    static func linuxTimeZoneFallback(
+        currentValue: String?,
+        localTimeReadable: Bool,
+        resolvedLocalTimePath: String?) -> String?
+    {
         guard currentValue == nil, localTimeReadable else { return nil }
+        if let identifier = self.linuxTimeZoneIdentifier(from: resolvedLocalTimePath) {
+            return identifier
+        }
         return ":/etc/localtime"
+    }
+
+    static func linuxTimeZoneIdentifier(from resolvedLocalTimePath: String?) -> String? {
+        guard let resolvedLocalTimePath,
+              let marker = resolvedLocalTimePath.range(of: "/zoneinfo/")
+        else { return nil }
+
+        var identifier = String(resolvedLocalTimePath[marker.upperBound...])
+        for prefix in ["posix/", "right/"] where identifier.hasPrefix(prefix) {
+            identifier.removeFirst(prefix.count)
+        }
+
+        let components = identifier.split(separator: "/", omittingEmptySubsequences: false)
+        guard !components.isEmpty,
+              components.allSatisfy({ !$0.isEmpty && $0 != "." && $0 != ".." })
+        else { return nil }
+        return identifier
     }
 
     private static func configureLinuxTimeZoneIfNeeded() {
         #if os(Linux)
         let currentValue = getenv("TZ").map { String(cString: $0) }
         let localTimeReadable = access("/etc/localtime", R_OK) == 0
+        let resolvedLocalTimePath = self.resolvedLinuxLocalTimePath()
         guard let fallback = self.linuxTimeZoneFallback(
             currentValue: currentValue,
-            localTimeReadable: localTimeReadable)
+            localTimeReadable: localTimeReadable,
+            resolvedLocalTimePath: resolvedLocalTimePath)
         else { return }
 
-        // Swift Foundation otherwise assumes /usr/share/zoneinfo exists. The absolute TZ file form
-        // preserves the configured local timezone on non-FHS systems such as NixOS.
+        if let identifier = self.linuxTimeZoneIdentifier(from: resolvedLocalTimePath) {
+            _ = self.primeCoreFoundationTimeZone(identifier: identifier, filePath: "/etc/localtime")
+        }
+
+        // Prefer the IANA identifier so FoundationEssentials retains DST rules. Legacy formatters
+        // use the CoreFoundation cache primed above when /usr/share/zoneinfo is unavailable.
         setenv("TZ", fallback, 0)
+        #endif
+    }
+
+    static func primeCoreFoundationTimeZone(identifier: String, filePath: String) -> Bool {
+        #if os(Linux)
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: filePath)), !data.isEmpty else { return false }
+        guard let name = identifier.withCString({
+            CFStringCreateWithCString(nil, $0, CFStringBuiltInEncodings.UTF8.rawValue)
+        }) else { return false }
+        guard let timeZoneData = data.withUnsafeBytes({ rawBuffer -> CFData? in
+            let bytes = rawBuffer.bindMemory(to: UInt8.self)
+            return CFDataCreate(nil, bytes.baseAddress, bytes.count)
+        }) else { return false }
+        return CFTimeZoneCreate(nil, name, timeZoneData) != nil
+        #else
+        return false
+        #endif
+    }
+
+    private static func resolvedLinuxLocalTimePath() -> String? {
+        #if os(Linux)
+        var buffer = [CChar](repeating: 0, count: Int(PATH_MAX))
+        guard realpath("/etc/localtime", &buffer) != nil else { return nil }
+        return buffer.withUnsafeBufferPointer { rawBuffer in
+            guard let baseAddress = rawBuffer.baseAddress else { return nil }
+            return String(cString: baseAddress)
+        }
+        #else
+        return nil
         #endif
     }
 
