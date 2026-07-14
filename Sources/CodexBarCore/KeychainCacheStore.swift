@@ -39,7 +39,7 @@ public enum KeychainCacheStore {
     }
 
     private static let log = CodexBarLog.logger(LogCategories.keychainCache)
-    private static let cacheService = "com.steipete.codexbar.cache"
+    private static let defaultCacheService = "com.steipete.codexbar.cache"
     private static let cacheLabel = "CodexBar Cache"
     private nonisolated(unsafe) static var globalServiceOverride: String?
     @TaskLocal private static var serviceOverride: String?
@@ -391,7 +391,17 @@ public enum KeychainCacheStore {
     }
 
     private static var serviceName: String {
-        serviceOverride ?? self.globalServiceOverride ?? self.cacheService
+        serviceOverride ?? self.globalServiceOverride ?? self.configuredServiceName
+    }
+
+    private static var configuredServiceName: String {
+        guard let configured = Bundle.main.object(
+            forInfoDictionaryKey: "CodexBarKeychainService") as? String,
+            !configured.isEmpty
+        else {
+            return self.defaultCacheService
+        }
+        return configured
     }
 
     private static var canUseRealKeychain: Bool {

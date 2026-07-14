@@ -183,7 +183,9 @@ for ARCH in "${ARCH_LIST[@]}"; do
   stage_build_products "$ARCH"
 done
 
-APP_FINAL="$ROOT/CodexBar.app"
+APP_NAME="${CODEXBAR_APP_NAME:-CodexBar}"
+APP_FILENAME="${CODEXBAR_APP_FILENAME:-${APP_NAME}.app}"
+APP_FINAL="$ROOT/$APP_FILENAME"
 APP_STAGE="$ROOT/.build/package/CodexBar.app"
 rm -rf "$APP_STAGE"
 APP="$APP_STAGE"
@@ -197,24 +199,30 @@ if [[ -f "$ICON_SOURCE" ]]; then
   iconutil --convert icns --output "$ICON_TARGET" "$ICON_SOURCE"
 fi
 
-BUNDLE_ID="com.steipete.codexbar"
+BUNDLE_ID="${CODEXBAR_BUNDLE_ID:-com.steipete.codexbar}"
 FEED_URL="https://raw.githubusercontent.com/steipete/CodexBar/main/appcast.xml"
 AUTO_CHECKS=true
-if [[ "$LOWER_CONF" == "debug" ]]; then
+if [[ "$LOWER_CONF" == "debug" && -z "${CODEXBAR_BUNDLE_ID:-}" ]]; then
   BUNDLE_ID="com.steipete.codexbar.debug"
   FEED_URL=""
   AUTO_CHECKS=false
+fi
+if [[ -n "${CODEXBAR_BUNDLE_ID:-}" ]]; then
+  FEED_URL="${CODEXBAR_FEED_URL:-}"
+  AUTO_CHECKS="${CODEXBAR_AUTO_CHECKS:-false}"
 fi
 if [[ "$SIGNING_MODE" == "adhoc" ]]; then
   FEED_URL=""
   AUTO_CHECKS=false
 fi
-WIDGET_BUNDLE_ID="${BUNDLE_ID}.widget"
+WIDGET_BUNDLE_ID="${CODEXBAR_WIDGET_BUNDLE_ID:-${BUNDLE_ID}.widget}"
 APP_TEAM_ID="${APP_TEAM_ID:-Y5PE65HELJ}"
-APP_GROUP_ID="${APP_TEAM_ID}.com.steipete.codexbar"
-if [[ "$BUNDLE_ID" == *".debug"* ]]; then
+APP_GROUP_ID="${CODEXBAR_APP_GROUP_ID:-${APP_TEAM_ID}.com.steipete.codexbar}"
+if [[ -z "${CODEXBAR_APP_GROUP_ID:-}" && "$BUNDLE_ID" == *".debug"* ]]; then
   APP_GROUP_ID="${APP_TEAM_ID}.com.steipete.codexbar.debug"
 fi
+KEYCHAIN_SERVICE="${CODEXBAR_KEYCHAIN_SERVICE:-${BUNDLE_ID}.cache}"
+LOG_SUBSYSTEM="${CODEXBAR_LOG_SUBSYSTEM:-${BUNDLE_ID}}"
 ENTITLEMENTS_DIR="$ROOT/.build/entitlements"
 APP_ENTITLEMENTS="${ENTITLEMENTS_DIR}/CodexBar.entitlements"
 WIDGET_ENTITLEMENTS="${ENTITLEMENTS_DIR}/CodexBarWidget.entitlements"
@@ -258,8 +266,8 @@ cat > "$APP/Contents/Info.plist" <<PLIST
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-    <key>CFBundleName</key><string>CodexBar</string>
-    <key>CFBundleDisplayName</key><string>CodexBar</string>
+    <key>CFBundleName</key><string>${APP_NAME}</string>
+    <key>CFBundleDisplayName</key><string>${APP_NAME}</string>
     <key>CFBundleIdentifier</key><string>${BUNDLE_ID}</string>
     <key>CFBundleExecutable</key><string>CodexBar</string>
     <key>CFBundlePackageType</key><string>APPL</string>
@@ -275,6 +283,9 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CodexBuildTimestamp</key><string>${BUILD_TIMESTAMP}</string>
     <key>CodexGitCommit</key><string>${GIT_COMMIT}</string>
     <key>CodexBarTeamID</key><string>${APP_TEAM_ID}</string>
+    <key>CodexBarAppGroupID</key><string>${APP_GROUP_ID}</string>
+    <key>CodexBarKeychainService</key><string>${KEYCHAIN_SERVICE}</string>
+    <key>CodexBarLogSubsystem</key><string>${LOG_SUBSYSTEM}</string>
 </dict>
 </plist>
 PLIST
@@ -391,6 +402,7 @@ build_widget_extension() {
     -skipPackagePluginValidation \
     CODEXBAR_WIDGET_BUNDLE_ID="$WIDGET_BUNDLE_ID" \
     CODEXBAR_TEAM_ID="$APP_TEAM_ID" \
+    CODEXBAR_APP_GROUP_ID="$APP_GROUP_ID" \
     MARKETING_VERSION="$MARKETING_VERSION" \
     CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
     CODE_SIGNING_ALLOWED=NO \

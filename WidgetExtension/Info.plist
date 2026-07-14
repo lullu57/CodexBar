@@ -22,6 +22,8 @@
 	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>CodexBarTeamID</key>
 	<string>$(CODEXBAR_TEAM_ID)</string>
+	<key>CodexBarAppGroupID</key>
+	<string>$(CODEXBAR_APP_GROUP_ID)</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>NSExtension</key>

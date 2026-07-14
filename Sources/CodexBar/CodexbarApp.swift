@@ -20,8 +20,10 @@ struct CodexBarApp: App {
         let env = ProcessInfo.processInfo.environment
         let storedLevel = CodexBarLog.parseLevel(UserDefaults.standard.string(forKey: "debugLogLevel")) ?? .verbose
         let level = CodexBarLog.parseLevel(env["CODEXBAR_LOG_LEVEL"]) ?? storedLevel
+        let logSubsystem = Bundle.main.object(forInfoDictionaryKey: "CodexBarLogSubsystem") as? String
+            ?? "com.steipete.codexbar"
         CodexBarLog.bootstrapIfNeeded(.init(
-            destination: .oslog(subsystem: "com.steipete.codexbar"),
+            destination: .oslog(subsystem: logSubsystem),
             level: level,
             json: false))
 

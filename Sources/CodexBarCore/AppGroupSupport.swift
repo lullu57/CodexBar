@@ -6,6 +6,7 @@ import Security
 public enum AppGroupSupport {
     public static let defaultTeamID = "Y5PE65HELJ"
     public static let teamIDInfoKey = "CodexBarTeamID"
+    public static let appGroupIDInfoKey = "CodexBarAppGroupID"
     public static let legacyReleaseGroupID = "group.com.steipete.codexbar"
     public static let legacyDebugGroupID = "group.com.steipete.codexbar.debug"
     public static let widgetSnapshotFilename = "widget-snapshot.json"
@@ -36,7 +37,12 @@ public enum AppGroupSupport {
     }
 
     public static func currentGroupID(for bundleID: String? = Bundle.main.bundleIdentifier) -> String {
-        self.currentGroupID(teamID: self.resolvedTeamID(), bundleID: bundleID)
+        if let configured = Bundle.main.object(forInfoDictionaryKey: self.appGroupIDInfoKey) as? String,
+           !configured.isEmpty
+        {
+            return configured
+        }
+        return self.currentGroupID(teamID: self.resolvedTeamID(), bundleID: bundleID)
     }
 
     static func currentGroupID(teamID: String, bundleID: String?) -> String {
