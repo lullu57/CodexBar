@@ -101,6 +101,15 @@ extension UsageStore {
     func planUtilizationHistorySelection(for provider: UsageProvider)
         -> (accountKey: String?, histories: [PlanUtilizationSeriesHistory])
     {
+        // The persisted history has not been read yet. Return the in-memory
+        // stub (empty) without performing account migration or enqueueing an
+        // empty persistence snapshot — otherwise a startup refresh racing the
+        // background load would record samples against an empty bucket and
+        // overwrite real disk history.
+        if !self.planUtilizationHistoryLoaded {
+            let providerBuckets = self.planUtilizationHistory[provider] ?? PlanUtilizationHistoryBuckets()
+            return (nil, providerBuckets.histories(for: nil))
+        }
         var providerBuckets = self.planUtilizationHistory[provider] ?? PlanUtilizationHistoryBuckets()
         if provider == .claude,
            providerBuckets.preferredAccountKey == Self.planUtilizationUnscopedPreferredKey
@@ -130,6 +139,12 @@ extension UsageStore {
     func codexPlanUtilizationHistories(forVisibleAccount account: CodexVisibleAccount)
         -> [PlanUtilizationSeriesHistory]
     {
+        // Same gate as `planUtilizationHistorySelection`: defer ownership
+        // migration until the persisted history has been read.
+        if !self.planUtilizationHistoryLoaded {
+            let providerBuckets = self.planUtilizationHistory[.codex] ?? PlanUtilizationHistoryBuckets()
+            return providerBuckets.histories(for: nil)
+        }
         var providerBuckets = self.planUtilizationHistory[.codex] ?? PlanUtilizationHistoryBuckets()
         let originalProviderBuckets = providerBuckets
         let ownership = self.codexOwnershipContext(forVisibleAccount: account)
@@ -229,6 +244,20 @@ extension UsageStore {
         guard !samples.isEmpty else { return }
         guard self.shouldRecordPlanUtilizationHistory(for: provider) else { return }
         guard !self.shouldDeferClaudePlanUtilizationHistory(provider: provider) else { return }
+
+        // Wait for the persisted history to finish loading before mutating
+        // `self.planUtilizationHistory`. A startup refresh racing the
+        // background decode would otherwise record samples against an empty
+        // bucket and overwrite real disk history on the next persistence
+        // enqueue.
+        if !self.planUtilizationHistoryLoaded {
+            // `_cancelPlanUtilizationHistoryLoadForTesting` cancels the task
+            // and flips `loaded` to true; this branch only runs when the load
+            // is still pending. Cancellation here (deinit during a startup
+            // refresh) means the in-memory dictionary is empty — proceeding
+            // is the safer choice than discarding the sample.
+            _ = await self.planUtilizationHistoryLoadTask?.result
+        }
 
         var snapshotToPersist: [UsageProvider: PlanUtilizationHistoryBuckets]?
         await MainActor.run {
@@ -452,6 +481,7 @@ extension UsageStore {
     private static func isSemanticSessionResetWindow(
         _ resolved: (window: RateWindow, source: SessionQuotaWindowSource)) -> Bool
     {
+        guard !resolved.window.isSyntheticPlaceholder else { return false }
         switch resolved.source {
         case .primary:
             guard let minutes = resolved.window.windowMinutes else { return false }
@@ -571,6 +601,7 @@ extension UsageStore {
         func appendWindow(_ window: RateWindow?, name: PlanUtilizationSeriesName?) {
             guard let name,
                   let window,
+                  !window.isSyntheticPlaceholder,
                   let windowMinutes = window.windowMinutes,
                   windowMinutes > 0,
                   let usedPercent = Self.clampedPercent(window.usedPercent)
