@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   sync:
@@ -17,6 +17,7 @@ jobs:
         with:
           ref: main
           fetch-depth: 0
+          ssh-key: ${{ secrets.CODEXBAR_SYNC_SSH_KEY }}
 
       - name: Merge upstream main
         run: |
