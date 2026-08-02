@@ -163,7 +163,7 @@ extension UsageStore {
                     allowDisabled: allowDisabled)
                 snapshotUpdatedAtBeforeRefresh = self.snapshot(for: provider)?.updatedAt
                 didStartRefresh = true
-                await ProviderRefreshRequestContext.$id.withValue(UUID()) {
+                await ProviderRefreshRequestContext.withNewRequest {
                     await self.refreshProviderTracked(
                         provider,
                         allowDisabled: allowDisabled,
@@ -556,6 +556,7 @@ extension UsageStore {
             }
             self.lastKnownResetSnapshots[provider] = backfilled
             self.snapshots[provider] = backfilled
+            self.widgetUsagePreservationBlockedProviders.remove(provider)
             if provider == .deepseek {
                 self.clearDeepSeekProfileTransition()
             }
@@ -670,6 +671,7 @@ extension UsageStore {
         await self.handleProviderFetchFailure(
             provider: provider,
             error: error,
+            attempts: attempts,
             context: context)
     }
 
@@ -968,6 +970,7 @@ extension UsageStore {
     }
 
     private func clearClaudeCredentialDerivedStateForCredentialSwapNow() {
+        self.widgetUsagePreservationBlockedProviders.insert(.claude)
         self.snapshots.removeValue(forKey: .claude)
         self.lastKnownResetSnapshots.removeValue(forKey: .claude)
         self.errors[.claude] = nil
@@ -986,6 +989,7 @@ extension UsageStore {
     private func handleProviderFetchFailure(
         provider: UsageProvider,
         error: Error,
+        attempts: [ProviderFetchAttempt],
         context: ProviderRefreshOutcomeContext) async
     {
         let shouldNotifyPermissionPrompt = Self.isPermissionPromptWaiting(error)
@@ -1047,6 +1051,7 @@ extension UsageStore {
                 self.lastSourceLabels.removeValue(forKey: provider)
                 self.errors[provider] = nil
                 self.knownLimitsAvailabilityByProvider[provider] = .unavailable
+                self.widgetUsagePreservationBlockedProviders.insert(provider)
                 self.failureGates[provider]?.reset()
                 return
             }
@@ -1060,12 +1065,18 @@ extension UsageStore {
                 return
             }
             let hadPriorData = self.snapshots[provider] != nil
+            let isTerminalClaudeCLIParseFailure =
+                provider == .claude &&
+                hadPriorData &&
+                Self.lastAvailableFailedFetchKind(from: attempts) == .cli &&
+                Self.isClaudeCLIUsageParseFailure(error)
             let preservesPriorData = Self.shouldPreservePriorSnapshot(
                 after: error,
                 hadPriorData: hadPriorData) ||
                 (provider == .claude &&
                     hadPriorData &&
-                    Self.isClaudeCLIRateLimitFailure(error))
+                    (Self.isClaudeCLIRateLimitFailure(error) ||
+                        isTerminalClaudeCLIParseFailure))
             let shouldSurface =
                 self.failureGates[provider]?
                     .shouldSurfaceError(onFailureWithPriorData: hadPriorData) ?? true
@@ -1161,6 +1172,12 @@ extension UsageStore {
             message.contains("not connected to the internet")
     }
 
+    private static func lastAvailableFailedFetchKind(from attempts: [ProviderFetchAttempt]) -> ProviderFetchKind? {
+        attempts.last { attempt in
+            attempt.wasAvailable && attempt.errorDescription != nil
+        }?.kind
+    }
+
     static func isPreservableNetworkTransportError(_ error: Error) -> Bool {
         let nsError = error as NSError
         guard nsError.domain == NSURLErrorDomain else { return false }
@@ -1223,6 +1240,16 @@ extension UsageStore {
 
     private static func isClaudeCLIRateLimitFailure(_ error: Error) -> Bool {
         ClaudeUsageFetcher.isCLIRateLimitError(error)
+    }
+
+    private static func isClaudeCLIUsageParseFailure(_ error: Error) -> Bool {
+        if case let ClaudeStatusProbeError.parseFailed(message) = error {
+            return !ClaudeStatusProbe.isSubscriptionQuotaUnavailableDescription(message)
+        }
+        if case let ClaudeUsageError.parseFailed(message) = error {
+            return !ClaudeStatusProbe.isSubscriptionQuotaUnavailableDescription(message)
+        }
+        return false
     }
 
     private static func isClaudeWebSessionRefreshFailure(_ error: Error) -> Bool {

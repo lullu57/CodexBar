@@ -6,7 +6,28 @@ import QuartzCore
 import Security
 import SwiftUI
 
+enum CodexBarLaunchMode: Equatable {
+    case application
+    case hookEvent
+
+    static func resolve(arguments: [String]) -> Self {
+        // Other CodexBar installations can leave this app path registered in ~/.codex/hooks.json.
+        // Treat those invocations as a no-op before AppKit creates a second set of status items.
+        arguments.dropFirst().contains("--hook-event") ? .hookEvent : .application
+    }
+}
+
 @main
+enum CodexBarEntryPoint {
+    @MainActor
+    static func main() {
+        guard CodexBarLaunchMode.resolve(arguments: CommandLine.arguments) == .application else {
+            return
+        }
+        CodexBarApp.main()
+    }
+}
+
 struct CodexBarApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var settings: SettingsStore
@@ -108,7 +129,16 @@ struct CodexBarApp: App {
     private func openSettings(pane: SettingsPane) {
         self.preferencesSelection.pane = pane
         NSApp.activate(ignoringOtherApps: true)
-        _ = NSApp.sendAction(Selector(("showPreferencesWindow:")), to: nil, from: nil)
+        let outcome = SettingsWindowOpener.live().open(preferred: .appKit)
+        let logger = CodexBarLog.logger(LogCategories.app)
+        switch outcome {
+        case .preferred:
+            break
+        case .fallback:
+            logger.warning("Settings AppKit action was not handled; used notification fallback")
+        case .failed:
+            logger.error("Failed to open Settings; AppKit action and notification fallback unavailable")
+        }
     }
 
     private static func applyLanguagePreference(from settings: SettingsStore) {
@@ -384,12 +414,24 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        AppNotifications.shared.requestAuthorizationOnStartup()
         self.memoryPressureMonitor.start()
         #if DEBUG
         self.installDebugMemoryPressureObserverIfNeeded()
         #endif
         self.ensureStatusController()
+        Task { @MainActor [weak self] in
+            await Task.yield()
+            guard let settings = self?.settings else { return }
+            AdaptiveActivityConsentPresenter.presentIfNeeded(settings: settings)
+            AppNotifications.shared.requestAuthorizationOnStartup()
+            // A persisted non-USD choice opts into the daily exchange-rate refresh. The service
+            // returns before networking for the default USD setting and Auto.
+            guard CurrencyExchange.requiresLiveRates(
+                preferredCurrencyCode: settings.preferredCurrencyCode)
+            else { return }
+            await CurrencyExchange.shared.fetchLatestRatesIfNeeded(
+                preferredCurrencyCode: settings.preferredCurrencyCode)
+        }
         KeyboardShortcuts.onKeyUp(for: .openMenu) { [weak self] in
             // KeyboardShortcuts dispatches both normal and menu-tracking hotkeys on the main event loop.
             MainActor.assumeIsolated {
@@ -516,6 +558,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 selection,
                 managedCodexAccountCoordinator,
                 codexAccountPromotionCoordinator)
+            if let statusController = self.statusController as? StatusItemController {
+                MenuSwitchFlickerProbe.startIfRequested(controller: statusController)
+            }
             return
         }
 

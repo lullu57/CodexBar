@@ -1,5 +1,138 @@
 # Changelog
 
+## 0.46.1 — Unreleased
+
+### Added
+- Claude: compact multi-account menu for claude-swap — with four or more accounts the active account keeps its full card while the others become one-line rows sorted by remaining headroom, constrained accounts surface in red/amber, the healthiest switch target gets a star, and the healthy tail folds behind a summary row. Click a row to expand its full card.
+- Menu: the compact multi-account layout now covers every stacked multi-account list — token accounts on any provider and Codex accounts (flat lists; workspace-grouped Codex lists keep their sections).
+
+### Fixed
+- Menu: provider tab switches no longer blank out card rows mid-switch. Cached tab content is replanted into the attached hosting views (SwiftUI payload swap) instead of detaching `item.view`, which made Tahoe's NSMenu paint fallback "NSMenuItem" placeholder rows for a few frames; residual structural churn now renders blank instead of placeholder text. Verified frame-by-frame via 120fps screen recordings driven by the self-probe.
+- OpenCode Go: read idle WAL-mode local history without creating SQLite sidecars (#2544). Thanks @Astro-Han for the report!
+- Keychain: stop "CodexBar Cache" login-keychain password prompts from dev and test tooling. Unbundled processes (`swift build` binaries, dev CLI runs) now use a process-local cache instead of the shared keychain item, never freeze a broken trusted-app ACL onto it, and test-blocked processes disable legacy keychain interaction process-wide and export the suppression flag to spawned child binaries.
+- MiMo/StepFun: feed monthly token-plan windows into usage history, pace, and forecasts (#2526, part of #2431). Thanks @LeoLin990405!
+- Menu: switching provider tabs no longer flashes. The sibling-tab warmup now runs off a tracking-safe timer (the previous Task-based warmup never fired while the menu was open, which is the only time it matters), and provider tabs share one stable menu height via an invisible spacer, so a switch is a single-frame content swap with no window resize. Verified frame-by-frame with a new env-gated self-probe (`CODEXBAR_FLICKER_PROBE_DIR`).
+
+### Changed
+- About: link the Website entry to codex.bar.
+
+## 0.46.0 — 2026-07-29
+
+### Added
+- Qwen Cloud: new provider for Individual Token Plans with 5-hour and weekly rolling windows (#2361). Thanks @umutkeltek, and @Yach0 for the API investigation!
+- ZoomMate: new provider with credits, session history, and pacing, using host-scoped cookie routing (#2344). Thanks @weddle!
+- Alibaba: Personal/Solo Token Plan variants for mainland (Bailian) and international (Model Studio) accounts (#2487). Thanks @LeoLin990405 and @halilertekin for the investigations!
+- Claude: show prepaid credit balance in cost surfaces, using only cached or manually configured web sessions (#2443). Thanks @Zihao-Qi!
+- Claude: setting to hide the Daily Routines row (#2358, fixes #2353). Thanks @Zihao-Qi and @tavlean!
+- Codex: local Workspaces indexing foundation for per-workspace usage attribution (#2456). Thanks @AmrMohamad!
+- Menu: fractional session quota estimates with a condensed weekly forecast row (#2357). Thanks @Zihao-Qi!
+
+### Changed
+- CLI: `config dump` now redacts stored credentials by default; `--show-secrets` restores raw output (#2410, fixes #2400). Thanks @Yuxin-Qiao!
+
+### Fixed
+- Keychain: disabling Keychain access no longer breaks Cursor and Claude refresh — cookie caches fall back to memory only, and background Claude checks cannot prompt (#2426, fixes #2408 and #2425). Thanks @gmkbenjamin!
+- Claude: keep the switcher bar on the account Weekly quota instead of exhausted model carve-outs (#2424, fixes #2423). Thanks @gmkbenjamin!
+- Claude: profile-scoped credential caching so multiple Claude profiles cannot reuse each other's cached credentials, with safe legacy migration (#2484, part of #2380). Thanks @ProspectOre!
+- Codex: bound cost scans on giant session corpora with resumable parsing — huge rollouts no longer pin a CPU core and still count fully toward cost history (#2452). Thanks @D4ilyHub!
+- Menu bar: center stacked two-line custom layouts vertically (#2347, fixes #2345). Thanks @kiranmagic7, and @lg for the measured report!
+- Menu bar: stale `--hook-event` launches from other CodexBar installations no longer create duplicate menu bar items (#2416). Thanks @uclort!
+- Widgets: prevent a WidgetKit reload loop that caused sustained chronod disk writes near quota resets (#2371). Thanks @Yuxin-Qiao and @cskeleton!
+- Widgets: remove an unintended dark background overlay (#2354). Thanks @jarvisluk!
+- Widgets: Claude enterprise spend-cap accounts now persist their extra-usage row instead of synthetic Session/Weekly rows (#2478). Thanks @ChenZiHong-Gavin!
+- Claude: hide the Daily Routines row entirely when Anthropic returns a null routines payload (#2450). Thanks @urda!
+- Claude: show model-scoped weekly rows above Daily Routines (#2461, fixes #2460). Thanks @Eimerrrrr!
+- Claude: tolerate garbled "all models" captures so duplicated weekly rows no longer appear (#2434). Thanks @guhyun9454!
+- Amp: parse subscription plans (Megawatt) into proper percentage windows instead of a misleading cookie error (#2438, fixes #2435). Thanks @tylergibbs1 and @diegomrv!
+- Grok: explicit cookie-refresh imports browser cookies and caches validated sessions for background reuse (#2458). Thanks @olddonkey!
+- Kimi: reliable weekly and API-derived window durations now feed pace and forecasts (#2433). Thanks @harjothkhara!
+- Chutes: render quota counts as detail text instead of misreading them as reset schedules (#2402, fixes #2399). Thanks @kiranmagic7!
+- Alibaba/Qwen: allow Token Plan usage on Linux with a manual cookie (#2356). Thanks @OfficialAbhinavSingh!
+- LongCat: automatic cookie import falls back to Firefox after Chrome (#2462, fixes #2463). Thanks @akshayprabhu200!
+- Hooks: preserve configured hooks across config saves (#2436, fixes #2432). Thanks @kiranmagic7!
+- Menu: prioritize exhausted windows for automatic display while preserving the Antigravity preference (#2352). Thanks @Yuxin-Qiao!
+- Menu bar: refresh custom Account labels after account changes (#2362). Thanks @kiranmagic7!
+- Usage: keep the learned full-session estimate visible while the session window is idle (#2336). Thanks @Zihao-Qi!
+- Resets: show the day form at exactly 24 hours in countdowns (#2343). Thanks @OfficialAbhinavSingh!
+- z.ai: clamp the raw-percentage fallback to 0–100 (#2342). Thanks @OfficialAbhinavSingh!
+- LLMProxy: skip already-elapsed reset times when picking the next reset (#2335). Thanks @OfficialAbhinavSingh!
+- Ollama: reuse validated browser sessions across refreshes, and skip inaccessible Safari cookies during automatic
+  fallback while preserving explicit Safari permission guidance (#2404). Thanks @hxy91819!
+
+## 0.45.2 — 2026-07-19
+
+### Fixed
+- Refresh: prevent macOS 14 launch crashes caused by TaskLocal task-allocation corruption (#2341, fixes #2319 and #2326). Thanks @lzylzylzy130 and @jorgesancha!
+- Menu bar: render custom-layout provider icons at the native size and tint them for light and dark menu bars (#2334). Thanks @elpinguinofrio!
+- Menu: fix switcher “Weekly progress” to prefer weekly quota windows, with provider-specific fallback when unavailable (#2327). Thanks @Anneo22!
+- Command Code: improve progress-bar contrast in dark mode (#2333). Thanks @Baksalyar!
+- Widgets: keep cost rows on one line with large token counts (#2337). Thanks @zhulijin1991!
+- OpenCode/OpenCode Go: preserve computed sub-1% usage percentages instead of rescaling them as direct fractions (#2331). Thanks @OfficialAbhinavSingh!
+- OpenCode Go: prefer local usage for unscoped Auto refreshes while keeping account- and workspace-scoped requests web-first (#2316). Thanks @kiranmagic7!
+
+## 0.45.1 — 2026-07-19
+
+### Added
+- Claude: show per-model weekly claude-swap usage windows from schema-v1 account listings (#2310). Thanks @AlexGodard!
+- Claude: allow an opt-in claude-swap card when only one account is available (#2280). Thanks @possibilities!
+- OpenCode Go: add daily local cost and plan-usage history (#2296). Thanks @kentoku24!
+- Overview: raise the merged provider limit from three to six (#2314). Thanks @BobbyWang0120!
+
+### Changed
+- Menu bar: remove status-item hover tooltips to match macOS menu extras, keeping VoiceOver titles (#2315). Thanks @BobbyWang0120!
+- Codex: simplify cost labels to "Cost" and move the reported-versus-estimated explanation into Cost settings, keeping a short per-value estimate note (#2313). Thanks @Zihao-Qi!
+
+### Fixed
+- StepFun: fix password login web ID derivation so the header and cookie match the anonymous token (#2312). Thanks @Zihao-Qi!
+- Menu bar: refresh custom cost tokens when token-cost data changes (#2305). Thanks @Zihao-Qi!
+- Menu bar: refresh custom reset tokens at their displayed time boundaries (#2303). Thanks @Zihao-Qi!
+- Usage: normalize session-equivalent forecasts against aligned partial-session samples so extrapolated weekly burn is not overstated (#2301). Thanks @Zihao-Qi!
+- Usage: align current/latest and historical cost/token metrics by period (#2295). Thanks @RoshanMhatre!
+- Codex: exclude parent-copied prefixes from compact subagent usage when the fork boundary matches the parent snapshot (#2285). Thanks @hhh2210!
+- Usage & Spend: fix black share-card PNG exports while keeping rendering compatible with Intel Macs (#2292). Thanks @Chipagosfinest!
+- Usage & Spend: keep complete model rows visible when another same-currency source has incomplete history (#2308). Thanks @Chipagosfinest!
+- ElevenLabs: clamp character and voice-slot usage percentages at 100% during overage (#2293). Thanks @OfficialAbhinavSingh!
+
+### Internal
+- Serialize the Claude CLI platform-gating cases to prevent nondeterministic Linux CI failures (#2311). Thanks @Chipagosfinest!
+
+## 0.45.0 — 2026-07-18
+
+### Added
+- Menu bar: add drag-and-drop layouts with customizable identity, usage, reset, cost, spacing, and stacked-line tokens (#2275).
+- Usage: estimate weekly quota in full 5-hour windows and show whether it can run out before reset (#2261). Thanks @hdsheena!
+- CLI: add quota-aware codexbar guard automation gates with stable exit codes, explicit windows, JSON output, and bounded fetches (#2237). Thanks @OfficialAbhinavSingh!
+- CLI: add a gated browser-cookie refresh command for cookie-backed providers (#2262). Thanks @PINKIIILQWQ!
+- OpenCode: add safe cookie re-import actions to OpenCode and OpenCode Go settings, preserving cached sessions until refreshed cookies validate (#2264). Thanks @PINKIIILQWQ!
+- Refresh: add an opt-in agent-aware Adaptive mode with consent-gated, bounded local activity detection (#2111). Thanks @hhh2210!
+- Codex: add opt-in local session cost estimates for organization API-key users (#2172). Thanks @wicolian!
+- Cursor: add dashboard token-cost reports with per-model API-rate estimates and Cursor-metered totals (#1745). Thanks @EClinick!
+- Cost usage: include OMP session logs alongside pi-compatible sessions without double-counting shared assistant entries (#2269). Thanks @kevcube!
+- OpenRouter: support multiple labeled API-key accounts with isolated usage, stacked/segmented menu cards, and CLI account selection (#2271). Thanks @andyylin!
+- Agent sessions: add opt-in descriptive Codex thread and subagent labels with safe project fallback (#2273). Thanks @sirwazzles!
+- ai&: add 30-day organization spend from request logs with partial-result labeling when pagination is truncated (#2256). Thanks @jethac!
+- DeepInfra: add prepaid balance, monthly spend, spending-limit, and suspension tracking via API keys (#2238). Thanks @billerickson!
+- Doubao: add arkcli Coding and Agent Plan usage with bounded CLI execution and personal/team quota support (#2221). Thanks @start3015!
+- DeepSeek: show Platform cost and token history with Cost summary while preserving optional-usage consent (#2270). Thanks @Zihao-Qi!
+- Confetti: use branded provider palettes for reset celebrations (#2177). Thanks @kreitter!
+
+### Fixed
+- Menu bar: fix palette drag-and-drop in the layout editor so dropped and reordered pills stick (#2279).
+- Menu Bar settings: remove the Layout editor's container-wide focus ring while preserving keyboard access to its tokens and controls.
+- Providers: gate version probes to enabled providers so disabled providers no longer spawn subprocesses or trigger TCC prompts at launch (#2277, #2278, fixes #2267). Thanks @kiranmagic7!
+- Settings: restore Settings opening after keepalive window recreation (#2259). Thanks @devYRPauli!
+- Linux CLI: close subprocess capture pipes and prevent EMFILE crashes in long-running serve processes (#2258, fixes #2234). Thanks @Yuxin-Qiao!
+- Claude: preserve last-good CLI usage across transient parse failures while clearing stale data after authentication loss (#2247, #2241). Thanks @kiranmagic7!
+- Claude: reuse the CLI probe session so refreshes no longer create empty account sessions (#2263). Thanks @elpinguinofrio and @devYRPauli!
+- Command Code: retry later browser sessions so stale earlier cookies do not mask an active Vivaldi session (#2281). Thanks @cicae!
+- Widgets: align token/cost refreshes with the global cadence, with a five-minute WidgetKit safety floor (#2282). Thanks @zhulijin1991!
+- Cursor: clamp plan usage at 100% when included usage exceeds the plan limit (#2255). Thanks @OfficialAbhinavSingh!
+- Abacus: clamp overage credit usage to 100% (#2265). Thanks @OfficialAbhinavSingh!
+
+### Internal
+- Tests: migrate remaining process-global test overrides to task-local scopes and remove dead seams (#2239, #2240, #2242, #2245). Thanks @anagnorisis2peripeteia!
+- Internal: enforce bounded agent-aware Adaptive scans and zero-scan behavior without consent (#2276).
+
 ## 0.44.0 — 2026-07-17
 
 ### Added

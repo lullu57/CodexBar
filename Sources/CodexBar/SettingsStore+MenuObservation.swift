@@ -5,6 +5,7 @@ extension SettingsStore {
         _ = self.providerOrder
         _ = self.providerEnablement
         _ = self.refreshFrequency
+        _ = self.adaptiveActivityScanConsent
         _ = self.launchAtLogin
         _ = self.debugMenuEnabled
         _ = self.debugDisableKeychainAccess
@@ -37,6 +38,10 @@ extension SettingsStore {
         _ = self.historicalTrackingEnabled
         _ = self.multiAccountMenuLayout
         _ = self.menuBarMetricPreferencesRaw
+        _ = self.menuBarLayout
+        _ = self.menuBarLayoutOverrides
+        _ = self.menuBarLayoutSize
+        _ = self.menuBarLayoutGap
         _ = self.copilotIconSecondaryWindowIDRaw
         _ = self.costUsageEnabled
         _ = self.codexLocalSessionCostLedgerEnabled
@@ -53,11 +58,13 @@ extension SettingsStore {
         _ = self.claudeWebExtrasEnabled
         _ = self.copilotBudgetExtrasEnabled
         _ = self.showOptionalCreditsAndExtraUsage
+        _ = self.claudeDailyRoutinesUsageVisible
         _ = self.codexSparkUsageVisible
         _ = self.openAIWebAccessEnabled
         _ = self.openAIWebBatterySaverEnabled
         _ = self.providerStorageFootprintsEnabled
         _ = self.agentSessionsEnabled
+        _ = self.agentSessionLabelStyle
         _ = self.agentSessionsManualHosts
         _ = self.codexUsageDataSource
         _ = self.codexActiveSource
@@ -76,6 +83,7 @@ extension SettingsStore {
         _ = self.augmentCookieSource
         _ = self.ampCookieSource
         _ = self.t3ChatCookieSource
+        _ = self.zoomMateCookieSource
         _ = self.ollamaCookieSource
         _ = self.mergeIcons
         _ = self.switcherShowsIcons
@@ -97,6 +105,7 @@ extension SettingsStore {
         _ = self.augmentCookieHeader
         _ = self.ampCookieHeader
         _ = self.t3ChatCookieHeader
+        _ = self.zoomMateCookieHeader
         _ = self.ollamaCookieHeader
         _ = self.copilotAPIToken
         _ = self.warpAPIToken

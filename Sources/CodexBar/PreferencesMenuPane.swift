@@ -75,6 +75,19 @@ struct MenuPane: View {
                         subtitle: L("agent_sessions_subtitle"))
                 }
 
+                SettingsMenuPicker(
+                    selection: self.$settings.agentSessionLabelStyle,
+                    options: MenuSettingsMenuOptions.agentSessionLabelStyles,
+                    label: {
+                        SettingsRowLabel(
+                            L("agent_session_labels_title"),
+                            subtitle: L("agent_session_labels_subtitle"))
+                    },
+                    optionLabel: { style in
+                        Text(style.label)
+                    })
+                    .disabled(!self.settings.agentSessionsEnabled)
+
                 TextField(L("agent_sessions_hosts_title"), text: self.$settings.agentSessionsManualHosts)
                     .disabled(!self.settings.agentSessionsEnabled)
             } header: {
@@ -127,10 +140,15 @@ struct CostSummarySettingsSection: View {
                         self.costStatusLine(provider: .claude)
                         self.costStatusLine(provider: .codex)
                         self.costStatusLine(provider: .cursor)
+                        Text(Self.costDataExplanation())
                     }
                 }
             }
         }
+    }
+
+    static func costDataExplanation() -> String {
+        L("cost_data_explanation")
     }
 
     private func costStatusLine(provider: UsageProvider) -> Text {

@@ -8,6 +8,7 @@ public struct CodexBarConfig: Codable, Sendable {
     private enum CodingKeys: String, CodingKey {
         case version
         case providers
+        case hooks
     }
 
     private enum ProviderCodingKeys: String, CodingKey {
@@ -46,6 +47,7 @@ public struct CodexBarConfig: Codable, Sendable {
             try providers.append(ProviderConfig(from: providerDecoder))
         }
         self.providers = providers
+        self.hooks = try container.decodeIfPresent(HooksConfig.self, forKey: .hooks)
     }
 
     public static func makeDefault(
@@ -111,6 +113,13 @@ public struct CodexBarConfig: Codable, Sendable {
             hooks: self.hooks)
     }
 
+    public func sanitizedForDump(showSecrets: Bool = false) -> CodexBarConfig {
+        guard !showSecrets else { return self }
+        var copy = self
+        copy.providers = copy.providers.map { $0.sanitizedForDump() }
+        return copy
+    }
+
     public func orderedProviders() -> [UsageProvider] {
         self.providers.map(\.id)
     }
@@ -162,6 +171,7 @@ public struct ProviderConfig: Codable, Sendable, Identifiable {
     public var enterpriseHost: String?
     public var tokenAccounts: ProviderTokenAccountData?
     public var claudeSwapEnabled: Bool?
+    public var claudeSwapShowSingleAccount: Bool?
     public var claudeSwapExecutablePath: String?
     public var codexActiveSource: CodexActiveSource?
     public var codexProfileHomePaths: [String]?
@@ -188,6 +198,7 @@ public struct ProviderConfig: Codable, Sendable, Identifiable {
         enterpriseHost: String? = nil,
         tokenAccounts: ProviderTokenAccountData? = nil,
         claudeSwapEnabled: Bool? = nil,
+        claudeSwapShowSingleAccount: Bool? = nil,
         claudeSwapExecutablePath: String? = nil,
         codexActiveSource: CodexActiveSource? = nil,
         codexProfileHomePaths: [String]? = nil,
@@ -213,6 +224,7 @@ public struct ProviderConfig: Codable, Sendable, Identifiable {
         self.enterpriseHost = enterpriseHost
         self.tokenAccounts = tokenAccounts
         self.claudeSwapEnabled = claudeSwapEnabled
+        self.claudeSwapShowSingleAccount = claudeSwapShowSingleAccount
         self.claudeSwapExecutablePath = claudeSwapExecutablePath
         self.codexActiveSource = codexActiveSource
         self.codexProfileHomePaths = codexProfileHomePaths
@@ -268,6 +280,23 @@ public struct ProviderConfig: Codable, Sendable, Identifiable {
 
     public var sanitizedDeepSeekProfileScope: String? {
         Self.clean(self.deepseekProfileScope)
+    }
+
+    public func sanitizedForDump() -> ProviderConfig {
+        var copy = self
+        if copy.apiKey != nil {
+            copy.apiKey = "[REDACTED]"
+        }
+        if copy.secretKey != nil {
+            copy.secretKey = "[REDACTED]"
+        }
+        if copy.cookieHeader != nil {
+            copy.cookieHeader = "[REDACTED]"
+        }
+        if let tokenAccounts = copy.tokenAccounts {
+            copy.tokenAccounts = tokenAccounts.sanitizedForDump()
+        }
+        return copy
     }
 
     private static func clean(_ raw: String?) -> String? {

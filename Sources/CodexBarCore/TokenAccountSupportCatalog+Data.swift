@@ -10,6 +10,13 @@ extension TokenAccountSupportCatalog {
             requiresManualCookieSource: false,
             cookieName: nil,
             environmentKeysToScrub: [OpenAIAPISettingsReader.projectIDEnvironmentKey]),
+        .openrouter: TokenAccountSupport(
+            title: "API keys",
+            subtitle: "Store multiple OpenRouter API keys.",
+            placeholder: "sk-or-v1-...",
+            injection: .environment(key: OpenRouterSettingsReader.envKey),
+            requiresManualCookieSource: false,
+            cookieName: nil),
         .claude: TokenAccountSupport(
             title: "Claude credentials",
             subtitle: "Store Claude sessionKey cookies, OAuth tokens, or Anthropic Admin API keys.",
@@ -22,6 +29,13 @@ extension TokenAccountSupportCatalog {
             subtitle: "Store multiple DeepSeek API keys.",
             placeholder: "Paste API key…",
             injection: .environment(key: DeepSeekSettingsReader.apiKeyEnvironmentKey),
+            requiresManualCookieSource: false,
+            cookieName: nil),
+        .deepinfra: TokenAccountSupport(
+            title: "API tokens",
+            subtitle: "Store multiple DeepInfra API keys.",
+            placeholder: "Paste API key…",
+            injection: .environment(key: DeepInfraSettingsReader.apiKeyEnvironmentKey),
             requiresManualCookieSource: false,
             cookieName: nil),
         .antigravity: TokenAccountSupport(
@@ -89,11 +103,11 @@ extension TokenAccountSupportCatalog {
             cookieName: nil),
         .ollama: TokenAccountSupport(
             title: "Session tokens",
-            subtitle: "Store multiple Ollama Cookie headers.",
-            placeholder: "Cookie: …",
+            subtitle: "Store multiple Ollama Cookie headers or session values.",
+            placeholder: "Cookie header or bare session value",
             injection: .cookieHeader,
             requiresManualCookieSource: true,
-            cookieName: nil),
+            cookieName: ollamaDefaultSessionCookieName),
         .abacus: TokenAccountSupport(
             title: "Session tokens",
             subtitle: "Store multiple Abacus AI Cookie headers.",

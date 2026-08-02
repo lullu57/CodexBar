@@ -5,7 +5,7 @@ import Foundation
 import FoundationNetworking
 #endif
 
-struct NtfyNotificationRequestBuilder {
+enum NtfyNotificationRequestBuilder {
     enum BuildError: Error {
         case invalidServerURL
         case invalidTopic
@@ -30,7 +30,7 @@ struct NtfyNotificationRequestBuilder {
         guard !trimmedTopic.isEmpty,
               !trimmedTopic.contains("/"),
               !trimmedTopic.contains("\\"),
-              !trimmedTopic.contains(where: { $0.isWhitespace })
+              !trimmedTopic.contains(where: \.isWhitespace)
         else {
             throw BuildError.invalidTopic
         }
@@ -79,7 +79,7 @@ final class PhoneNotifications {
                     body: body)
                 let (_, response) = try await URLSession.shared.data(for: request)
                 guard let httpResponse = response as? HTTPURLResponse,
-                      (200 ... 299).contains(httpResponse.statusCode)
+                      (200...299).contains(httpResponse.statusCode)
                 else {
                     let status = (response as? HTTPURLResponse)?.statusCode ?? -1
                     throw NtfyNotificationError.httpStatus(status)

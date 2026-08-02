@@ -18,6 +18,7 @@ extension StatusItemController {
         errorOverride: String? = nil,
         forceOverrideCard: Bool = false,
         accountOverride: AccountInfo? = nil,
+        historySelectionOverride: PlanUtilizationHistorySelection? = nil,
         planOverride: String? = nil) -> UsageMenuCardView.Model?
     {
         let target = provider ?? self.store.enabledProvidersForDisplay().first ?? .codex
@@ -87,17 +88,13 @@ extension StatusItemController {
 
         let sourceLabel = surface == .liveCard ? self.store.sourceLabel(for: target) : nil
         let kiloAutoMode = target == .kilo && self.settings.kiloUsageDataSource == .auto
-        // Abacus uses primary for monthly credits (no secondary window)
-        let paceWindow = target == .abacus ? snapshot?.primary : snapshot?.secondary
-        let weeklyPace = if let codexProjection,
-                            let weekly = codexProjection.rateWindow(for: .weekly)
-        {
-            self.store.weeklyPace(provider: target, window: weekly, now: now)
-        } else {
-            paceWindow.flatMap { window in
-                self.store.weeklyPace(provider: target, window: window, now: now)
-            }
-        }
+        let (weeklyPace, sessionEquivalentForecast) = self.resolvePaceAndForecast(
+            target: target,
+            snapshot: snapshot,
+            codexProjection: codexProjection,
+            usesOverrideCard: surface == .overrideCard,
+            historySelectionOverride: historySelectionOverride,
+            now: now)
         let fallbackAccount = accountOverride
             ?? (metadata.usesAccountFallback
                 ? self.store.accountInfo(for: target)
@@ -129,24 +126,105 @@ extension StatusItemController {
             tokenCostUsageEnabled: self.settings.isCostUsageEffectivelyEnabled(for: target),
             codexLocalSessionCostLedgerEnabled: self.settings.codexLocalSessionCostLedgerEnabled,
             tokenCostInlineDashboardEnabled: self.settings.costSummaryShowsInlineDashboard(for: target),
-            tokenCostMenuSectionEnabled: !UsageStore.tokenCostRequiresProviderSnapshot(target) &&
+            // openai/mistral's cost history always surfaces via the inline dashboard or a
+            // dedicated top-pane submenu (see `makeUsageSubmenu`), so they skip the generic
+            // "Cost" row. This must stay an explicit provider check rather than reusing
+            // `usesProviderCostHistoryAsPrimaryDashboard` (or `tokenCostRequiresProviderSnapshot`):
+            // both of those sets are shared with unrelated concerns (inline-dashboard eligibility,
+            // provider-derived snapshot sourcing) and gain members for reasons that have nothing to
+            // do with whether this row should show, silently disabling the Cost row for those
+            // providers too (e.g. groq's addition to the inline-dashboard set previously did this).
+            tokenCostMenuSectionEnabled: target != .mistral && target != .openai &&
                 self.settings.costSummaryShowsSubmenu(for: target),
             costComparisonPeriodsEnabled: self.settings.costComparisonPeriodsEnabled,
             showOptionalCreditsAndExtraUsage: self.settings.showOptionalCreditsAndExtraUsage,
+            claudeDailyRoutinesUsageVisible: self.settings.claudeDailyRoutinesUsageVisible,
             codexSparkUsageVisible: self.settings.codexSparkUsageVisible,
             copilotBudgetExtrasEnabled: self.settings.copilotBudgetExtrasEnabled,
             sourceLabel: sourceLabel,
             kiloAutoMode: kiloAutoMode,
             hidePersonalInfo: self.settings.hidePersonalInfo,
             weeklyPace: weeklyPace,
+            sessionEquivalentForecast: sessionEquivalentForecast,
             quotaWarningThresholds: [
                 .session: self.quotaWarningMarkerThresholds(provider: target, window: .session),
                 .weekly: self.quotaWarningMarkerThresholds(provider: target, window: .weekly),
             ],
             workDaysPerWeek: self.settings.weeklyProgressWorkDays,
             usesLiveSubtitle: surface == .liveCard,
+            preferredCurrencyCode: self.settings.preferredCurrencyCode,
             now: now)
         return UsageMenuCardView.Model.make(input)
+    }
+
+    // swiftlint:disable:next function_parameter_count
+    private func resolvePaceAndForecast(
+        target: UsageProvider,
+        snapshot: UsageSnapshot?,
+        codexProjection: CodexConsumerProjection?,
+        usesOverrideCard: Bool,
+        historySelectionOverride: PlanUtilizationHistorySelection?,
+        now: Date)
+        -> (weeklyPace: UsagePace?, sessionEquivalentForecast: SessionEquivalentForecast?)
+    {
+        let paceWindow = target == .abacus || target == .kimi
+            ? snapshot?.primary : snapshot?.secondary
+        let historySelection = self.sessionEquivalentHistorySelection(
+            provider: target,
+            snapshot: snapshot,
+            usesOverrideCard: usesOverrideCard,
+            override: historySelectionOverride)
+        let weeklyPace = if let codexProjection,
+                            let weekly = codexProjection.rateWindow(for: .weekly)
+        {
+            self.store.weeklyPace(provider: target, window: weekly, now: now)
+        } else {
+            paceWindow.flatMap { window in
+                self.store.weeklyPace(provider: target, window: window, now: now)
+            }
+        }
+        let forecast: SessionEquivalentForecast? = if let codexProjection,
+                                                      let session = codexProjection
+                                                          .rateWindow(for: .session),
+                                                          let weekly = codexProjection
+                                                              .rateWindow(for: .weekly)
+        {
+            self.store.sessionEquivalentForecast(
+                provider: target,
+                sessionWindow: session,
+                weeklyWindow: weekly,
+                historySelection: historySelection,
+                now: now)
+        } else if let snapshot,
+                  let windows = self.store.sessionEquivalentWindows(
+                      provider: target, snapshot: snapshot)
+        {
+            self.store.sessionEquivalentForecast(
+                provider: target,
+                sessionWindow: windows.session,
+                weeklyWindow: windows.weekly,
+                weeklyWindowID: windows.weeklyWindowID,
+                historyIdentity: windows.historyIdentity,
+                historySelection: historySelection,
+                now: now)
+        } else {
+            nil
+        }
+        return (weeklyPace, forecast)
+    }
+
+    private func sessionEquivalentHistorySelection(
+        provider: UsageProvider,
+        snapshot: UsageSnapshot?,
+        usesOverrideCard: Bool,
+        override: PlanUtilizationHistorySelection?) -> PlanUtilizationHistorySelection?
+    {
+        guard usesOverrideCard else { return nil }
+        if let override {
+            return override
+        }
+        guard let snapshot else { return .unavailable }
+        return self.store.planUtilizationHistorySelection(for: provider, snapshotOverride: snapshot)
     }
 
     func accountInfo(for account: CodexVisibleAccount) -> AccountInfo {

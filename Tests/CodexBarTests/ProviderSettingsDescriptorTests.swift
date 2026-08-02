@@ -1,11 +1,30 @@
-import CodexBarCore
 import Foundation
 import SwiftUI
 import Testing
 @testable import CodexBar
+@testable import CodexBarCore
 
 @MainActor
+@Suite(.serialized)
 struct ProviderSettingsDescriptorTests {
+    @Test
+    func `provider settings refresh enables explicit browser retry`() async {
+        var observedInteraction: ProviderInteraction?
+        var browserRetryAllowed = false
+
+        await KeychainAccessGate.withTaskOverrideForTesting(false) {
+            await BrowserCookieAccessGate.withDeniedBrowsersForTesting([.chrome]) {
+                await ProviderSettingsRefreshInteraction.perform {
+                    observedInteraction = ProviderInteractionContext.current
+                    browserRetryAllowed = BrowserCookieAccessGate.shouldAttempt(.chrome)
+                }
+            }
+        }
+
+        #expect(observedInteraction == .userInitiated)
+        #expect(browserRetryAllowed)
+    }
+
     @Test
     func `toggle I ds are unique across providers`() throws {
         let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-unique")
@@ -48,6 +67,173 @@ struct ProviderSettingsDescriptorTests {
         #expect(project.subtitle.contains(OpenAIAPISettingsReader.projectIDEnvironmentKey))
         #expect(fixture.settings.openAIAPIProjectID == "proj_abc")
         #expect(fixture.settings.providerConfig(for: .openai)?.sanitizedWorkspaceID == "proj_abc")
+    }
+
+    @Test
+    func `open code cookie refresh commits replacement through user initiated gate`() async throws {
+        let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-opencode-refresh")
+        let context = fixture.settingsContext(provider: .opencode)
+        let picker = try #require(OpenCodeProviderImplementation().settingsPickers(context: context).first)
+        let action = try #require(picker.trailingActions.first)
+        let service = "com.steipete.codexbar.tests.settings-cookie-refresh.\(UUID().uuidString)"
+        var observedInteraction: ProviderInteraction?
+
+        #expect(action.title == "Refresh")
+        #expect(action.isVisible?() == true)
+
+        await KeychainCacheStore.withServiceOverrideForTesting(service) {
+            await KeychainCacheStore.withImplicitTestStoreForTesting {
+                CookieHeaderCache.store(
+                    provider: .opencode,
+                    cookieHeader: "old-test-cookie",
+                    sourceLabel: "Test old")
+                fixture.store._test_providerRefreshOverride = { provider in
+                    observedInteraction = ProviderInteractionContext.current
+                    CookieHeaderCache.store(
+                        provider: provider,
+                        cookieHeader: "new-test-cookie",
+                        sourceLabel: "Test new")
+                    fixture.store.snapshots[provider] = UsageSnapshot(
+                        primary: nil,
+                        secondary: nil,
+                        updatedAt: Date())
+                    fixture.store.lastSourceLabels[provider] = "web"
+                }
+                defer { fixture.store._test_providerRefreshOverride = nil }
+
+                await action.perform()
+
+                #expect(observedInteraction == .userInitiated)
+                #expect(CookieHeaderCache.load(provider: .opencode)?.cookieHeader == "new-test-cookie")
+                #expect(picker.trailingText?()?.contains("Test new") == true)
+            }
+        }
+    }
+
+    @Test
+    func `ollama automatic cookie source exposes validated refresh action`() throws {
+        let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-ollama-refresh")
+        let context = fixture.settingsContext(provider: .ollama)
+        let pickers = OllamaProviderImplementation().settingsPickers(context: context)
+        let picker = try #require(pickers.first { $0.id == "ollama-cookie-source" })
+        let action = try #require(picker.trailingActions.first)
+
+        #expect(action.id == "ollama-reimport-cookie")
+        #expect(action.title == "Refresh")
+        #expect(action.isVisible?() == true)
+
+        fixture.settings.ollamaCookieSource = .manual
+        #expect(action.isVisible?() == false)
+        #expect(picker.trailingText?() == nil)
+
+        fixture.settings.ollamaCookieSource = .auto
+        fixture.settings.ollamaUsageDataSource = .api
+        #expect(action.isVisible?() == false)
+        #expect(picker.trailingText?() == nil)
+    }
+
+    @Test
+    func `open code go cookie refresh rejects local fallback cookie`() async throws {
+        let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-opencodego-validation")
+        let context = fixture.settingsContext(provider: .opencodego)
+        let picker = try #require(OpenCodeGoProviderImplementation().settingsPickers(context: context).first)
+        let action = try #require(picker.trailingActions.first)
+        let service = "com.steipete.codexbar.tests.settings-cookie-validation.\(UUID().uuidString)"
+
+        await KeychainCacheStore.withServiceOverrideForTesting(service) {
+            await KeychainCacheStore.withImplicitTestStoreForTesting {
+                CookieHeaderCache.store(
+                    provider: .opencodego,
+                    cookieHeader: "old-test-cookie",
+                    sourceLabel: "Test old")
+                fixture.store._test_providerRefreshOverride = { provider in
+                    CookieHeaderCache.store(
+                        provider: provider,
+                        cookieHeader: "invalid-test-cookie",
+                        sourceLabel: "Test invalid")
+                    fixture.store.snapshots[provider] = UsageSnapshot(
+                        primary: nil,
+                        secondary: nil,
+                        updatedAt: Date())
+                    fixture.store.lastSourceLabels[provider] = "local"
+                }
+                defer { fixture.store._test_providerRefreshOverride = nil }
+
+                await action.perform()
+
+                #expect(CookieHeaderCache.load(provider: .opencodego)?.cookieHeader == "old-test-cookie")
+                #expect(picker.trailingText?() == L("Failed"))
+            }
+        }
+    }
+
+    @Test
+    func `open code cookie refresh rejects missing validation snapshot`() async throws {
+        let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-opencode-validation")
+        let context = fixture.settingsContext(provider: .opencode)
+        let picker = try #require(OpenCodeProviderImplementation().settingsPickers(context: context).first)
+        let action = try #require(picker.trailingActions.first)
+        let service = "com.steipete.codexbar.tests.settings-cookie-missing-snapshot.\(UUID().uuidString)"
+        fixture.store.snapshots[.opencode] = UsageSnapshot(
+            primary: nil,
+            secondary: nil,
+            updatedAt: Date())
+        fixture.store.lastSourceLabels[.opencode] = "web"
+
+        await KeychainCacheStore.withServiceOverrideForTesting(service) {
+            await KeychainCacheStore.withImplicitTestStoreForTesting {
+                CookieHeaderCache.store(
+                    provider: .opencode,
+                    cookieHeader: "old-test-cookie",
+                    sourceLabel: "Test old")
+                fixture.store._test_providerRefreshOverride = { provider in
+                    CookieHeaderCache.store(
+                        provider: provider,
+                        cookieHeader: "unvalidated-test-cookie",
+                        sourceLabel: "Test unvalidated")
+                    fixture.store.snapshots.removeValue(forKey: provider)
+                }
+                defer { fixture.store._test_providerRefreshOverride = nil }
+
+                await action.perform()
+
+                #expect(CookieHeaderCache.load(provider: .opencode)?.cookieHeader == "old-test-cookie")
+                #expect(picker.trailingText?() == L("Failed"))
+            }
+        }
+    }
+
+    @Test
+    func `open code cookie refresh respects denial cooldown and preserves cookie`() async throws {
+        let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-opencode-cooldown")
+        let context = fixture.settingsContext(provider: .opencode)
+        let picker = try #require(OpenCodeProviderImplementation().settingsPickers(context: context).first)
+        let action = try #require(picker.trailingActions.first)
+        let service = "com.steipete.codexbar.tests.settings-cookie-cooldown.\(UUID().uuidString)"
+        var cooldownRespected = false
+
+        BrowserCookieAccessGate.resetForTesting()
+        BrowserCookieAccessGate.recordDenied(for: .chrome)
+        defer { BrowserCookieAccessGate.resetForTesting() }
+
+        await KeychainCacheStore.withServiceOverrideForTesting(service) {
+            await KeychainCacheStore.withImplicitTestStoreForTesting {
+                CookieHeaderCache.store(
+                    provider: .opencode,
+                    cookieHeader: "old-test-cookie",
+                    sourceLabel: "Test old")
+                fixture.store._test_providerRefreshOverride = { _ in
+                    cooldownRespected = !BrowserCookieAccessGate.shouldAttempt(.chrome)
+                }
+                defer { fixture.store._test_providerRefreshOverride = nil }
+
+                await action.perform()
+
+                #expect(cooldownRespected)
+                #expect(CookieHeaderCache.load(provider: .opencode)?.cookieHeader == "old-test-cookie")
+                #expect(picker.trailingText?() == L("Failed"))
+            }
+        }
     }
 
     @Test
@@ -137,6 +323,45 @@ struct ProviderSettingsDescriptorTests {
         #expect(optionIDs.contains(ClaudeOAuthKeychainPromptMode.onlyOnUserAction.rawValue))
         #expect(optionIDs.contains(ClaudeOAuthKeychainPromptMode.always.rawValue))
         #expect(keychainPicker.isEnabled?() ?? true)
+    }
+
+    @Test
+    func `claude daily routines toggle follows global optional usage setting`() throws {
+        let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-claude-routines")
+        let context = fixture.settingsContext(provider: .claude)
+        let toggles = ClaudeProviderImplementation().settingsToggles(context: context)
+        let routinesToggle = try #require(toggles.first {
+            $0.id == "claude-daily-routines-usage-visible"
+        })
+
+        #expect(routinesToggle.binding.wrappedValue)
+        #expect(routinesToggle.isEnabled?() == true)
+
+        routinesToggle.binding.wrappedValue = false
+        #expect(fixture.settings.claudeDailyRoutinesUsageVisible == false)
+
+        fixture.settings.showOptionalCreditsAndExtraUsage = false
+        #expect(routinesToggle.isEnabled?() == false)
+    }
+
+    @Test
+    func `claude single swap account toggle persists and follows integration visibility`() throws {
+        let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-claude-swap-single")
+        let context = fixture.settingsContext(provider: .claude)
+        let toggles = ClaudeProviderImplementation().settingsToggles(context: context)
+        let singleAccountToggle = try #require(toggles.first {
+            $0.id == "claude-swap-show-single-account"
+        })
+
+        #expect(singleAccountToggle.binding.wrappedValue == false)
+        #expect(singleAccountToggle.isVisible?() == false)
+
+        fixture.settings.claudeSwapEnabled = true
+        #expect(singleAccountToggle.isVisible?() == true)
+        singleAccountToggle.binding.wrappedValue = true
+
+        #expect(fixture.settings.claudeSwapShowSingleAccount)
+        #expect(fixture.settings.configSnapshot.providerConfig(for: .claude)?.claudeSwapShowSingleAccount == true)
     }
 
     @Test
@@ -321,6 +546,20 @@ struct ProviderSettingsDescriptorTests {
 
 extension ProviderSettingsDescriptorTests {
     @Test
+    func `zoommate presentation surfaces web rather than an undetected version`() throws {
+        let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-zoommate-presentation")
+        let metadata = try #require(ProviderDescriptorRegistry.metadata[.zoommate])
+        let context = fixture.presentationContext(provider: .zoommate, metadata: metadata)
+
+        let detailLine = ZoomMateProviderImplementation()
+            .presentation(context: context)
+            .detailLine(context)
+
+        // Web-cookie provider with versionDetector: nil — must not fall back to "zoommate not detected".
+        #expect(detailLine == "web")
+    }
+
+    @Test
     func `devin presentation follows store source label`() throws {
         let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-devin-presentation")
         fixture.store.lastSourceLabels[.devin] = "web"
@@ -344,8 +583,10 @@ extension ProviderSettingsDescriptorTests {
         let implementation = AlibabaTokenPlanProviderImplementation()
         let pickers = implementation.settingsPickers(context: context)
         let fields = implementation.settingsFields(context: context)
+        let regionPicker = try #require(pickers.first(where: { $0.id == "alibaba-token-plan-region" }))
 
         #expect(pickers.contains(where: { $0.id == "alibaba-token-plan-cookie-source" }))
+        #expect(Set(regionPicker.options.map(\.id)) == ["intl", "cn", "intl-personal", "cn-personal"])
         #expect(fields.contains(where: { $0.id == "alibaba-token-plan-cookie" }))
         #expect(fields.first?.actions.contains(where: { $0.id == "alibaba-token-plan-open-dashboard" }) == true)
     }
@@ -787,8 +1028,11 @@ extension ProviderSettingsDescriptorTests {
     }
 
     @Test
-    func `deepseek detailed usage runs only for the active api token account`() throws {
+    func `deepseek detailed usage requires cost extras and active api token account`() throws {
         let fixture = try self.makeSettingsFixture(suite: "ProviderSettingsDescriptorTests-deepseek-account-usage")
+        fixture.settings.showOptionalCreditsAndExtraUsage = true
+        fixture.settings.costSummaryOption = .inlineSummary
+        #expect(fixture.settings.costSummaryShowsInlineDashboard(for: .deepseek))
         fixture.settings.addTokenAccount(provider: .deepseek, label: "Personal", token: "token-1")
         fixture.settings.addTokenAccount(provider: .deepseek, label: "Work", token: "token-2")
         let accounts = fixture.settings.tokenAccounts(for: .deepseek)
@@ -803,6 +1047,30 @@ extension ProviderSettingsDescriptorTests {
             provider: .deepseek,
             settings: fixture.settings,
             override: TokenAccountOverride(provider: .deepseek, account: inactive)))
+        fixture.settings.costSummaryOption = .costSubmenu
+        #expect(fixture.settings.costSummaryShowsInlineDashboard(for: .deepseek))
+        #expect(ProviderTokenAccountSelection.shouldIncludeOptionalUsage(
+            provider: .deepseek,
+            settings: fixture.settings,
+            override: TokenAccountOverride(provider: .deepseek, account: active)))
+        fixture.settings.costSummaryOption = .both
+        #expect(fixture.settings.costSummaryShowsInlineDashboard(for: .deepseek))
+        fixture.settings.costSummaryOption = .off
+        #expect(!fixture.settings.costSummaryShowsInlineDashboard(for: .deepseek))
+        #expect(!ProviderTokenAccountSelection.shouldIncludeOptionalUsage(
+            provider: .deepseek,
+            settings: fixture.settings,
+            override: TokenAccountOverride(provider: .deepseek, account: active)))
+        fixture.settings.showOptionalCreditsAndExtraUsage = false
+        #expect(!ProviderTokenAccountSelection.shouldIncludeOptionalUsage(
+            provider: .codex,
+            settings: fixture.settings,
+            override: nil))
+        fixture.settings.costSummaryOption = .inlineSummary
+        #expect(!ProviderTokenAccountSelection.shouldIncludeOptionalUsage(
+            provider: .deepseek,
+            settings: fixture.settings,
+            override: TokenAccountOverride(provider: .deepseek, account: active)))
     }
 
     @Test

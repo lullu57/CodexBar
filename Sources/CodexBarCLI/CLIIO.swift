@@ -41,8 +41,12 @@ extension CodexBarCLI {
             print(Self.hooksHelp(version: version))
         case "cache", "clear":
             print(Self.cacheHelp(version: version))
+        case "cookie", "refresh":
+            print(Self.cookieHelp(version: version))
         case "diagnose":
             print(Self.diagnoseHelp(version: version))
+        case "guard":
+            print(Self.guardHelp(version: version))
         default:
             print(Self.rootHelp(version: version))
         }
@@ -51,14 +55,37 @@ extension CodexBarCLI {
 
     static func currentVersion(
         bundle: Bundle = .main,
-        executablePath: String? = CommandLine.arguments.first) -> String?
+        executablePath: String? = nil) -> String?
     {
+        let executablePath = executablePath ?? Self.runningExecutablePath(bundle: bundle)
         if let version = self.currentVersion(bundleVersion: nil, executablePath: executablePath) {
             return version
         }
         return self.currentVersion(
             bundleVersion: bundle.infoDictionary?["CFBundleShortVersionString"] as? String,
             executablePath: nil)
+    }
+
+    static func runningExecutablePath(bundle: Bundle = .main) -> String? {
+        // Bundle.executableURL keeps this seam deterministic for app bundles and tests; the
+        // platform-specific fallbacks cover direct standalone launches without a usable bundle.
+        if let path = bundle.executableURL?.path, !path.isEmpty {
+            return path
+        }
+
+        #if canImport(Darwin)
+        var size: UInt32 = 0
+        guard _NSGetExecutablePath(nil, &size) != 0 else { return nil }
+        var buffer = [Int8](repeating: 0, count: Int(size))
+        guard _NSGetExecutablePath(&buffer, &size) == 0 else { return nil }
+        return String(cString: buffer)
+        #elseif os(Linux)
+        let path = "/proc/self/exe"
+        guard FileManager.default.fileExists(atPath: path) else { return nil }
+        return URL(fileURLWithPath: path).resolvingSymlinksInPath().path
+        #else
+        return nil
+        #endif
     }
 
     static func currentVersion(bundleVersion: String?, executablePath: String?) -> String? {
@@ -86,7 +113,7 @@ extension CodexBarCLI {
                 guard let data = fileManager.contents(atPath: infoURL.path),
                       let plist = try? PropertyListSerialization.propertyList(from: data, format: nil) as? [String: Any]
                 else { return nil }
-                return plist["CFBundleShortVersionString"] as? String
+                return Self.normalizedBundleVersion(plist["CFBundleShortVersionString"] as? String)
             }
             currentURL.deleteLastPathComponent()
         }

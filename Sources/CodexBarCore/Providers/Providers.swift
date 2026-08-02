@@ -13,6 +13,7 @@ public enum UsageProvider: String, CaseIterable, Sendable, Codable {
     case opencodego
     case alibaba
     case alibabatokenplan
+    case qwencloud
     case factory
     case gemini
     case antigravity
@@ -44,6 +45,7 @@ public enum UsageProvider: String, CaseIterable, Sendable, Codable {
     case abacus
     case mistral
     case deepseek
+    case deepinfra
     case codebuff
     case crof
     case venice
@@ -64,6 +66,9 @@ public enum UsageProvider: String, CaseIterable, Sendable, Codable {
     case sub2api
     case wayfinder
     case zenmux
+    case aiand
+    case zoommate
+    case xai
 }
 
 // swiftformat:enable sortDeclarations
@@ -82,6 +87,7 @@ public enum IconStyle: String, Sendable, CaseIterable {
     case opencode
     case opencodego
     case alibaba
+    case qwencloud
     case factory
     case copilot
     case devin
@@ -108,6 +114,7 @@ public enum IconStyle: String, Sendable, CaseIterable {
     case abacus
     case mistral
     case deepseek
+    case deepinfra
     case codebuff
     case crof
     case venice
@@ -128,6 +135,9 @@ public enum IconStyle: String, Sendable, CaseIterable {
     case sub2api
     case wayfinder
     case zenmux
+    case aiand
+    case zoommate
+    case xai
     case combined
 }
 
@@ -156,6 +166,8 @@ public struct ProviderMetadata: Sendable {
     public let statusLinkURL: String?
     /// Google Workspace product ID for status polling (appsstatus dashboard).
     public let statusWorkspaceProductID: String?
+    /// Optional top-level component/group names to show from a provider status feed.
+    public let statusComponentAllowlist: Set<String>?
 
     public init(
         id: UsageProvider,
@@ -177,7 +189,8 @@ public struct ProviderMetadata: Sendable {
         changelogURL: String? = nil,
         statusPageURL: String?,
         statusLinkURL: String? = nil,
-        statusWorkspaceProductID: String? = nil)
+        statusWorkspaceProductID: String? = nil,
+        statusComponentAllowlist: Set<String>? = nil)
     {
         self.id = id
         self.displayName = displayName
@@ -199,6 +212,7 @@ public struct ProviderMetadata: Sendable {
         self.statusPageURL = statusPageURL
         self.statusLinkURL = statusLinkURL
         self.statusWorkspaceProductID = statusWorkspaceProductID
+        self.statusComponentAllowlist = statusComponentAllowlist
     }
 }
 
@@ -209,6 +223,14 @@ public enum ProviderDefaults {
 }
 
 public enum ProviderBrowserCookieDefaults {
+    public static var chromeOnlyImportOrder: BrowserCookieImportOrder? {
+        #if os(macOS)
+        [.chrome]
+        #else
+        nil
+        #endif
+    }
+
     public static var defaultImportOrder: BrowserCookieImportOrder? {
         #if os(macOS)
         Browser.defaultImportOrder
@@ -287,10 +309,11 @@ public enum ProviderBrowserCookieDefaults {
         #endif
     }
 
-    /// LongCat Auto imports only from Chrome by default to avoid prompting unrelated browser keychains.
+    /// LongCat Auto keeps Chrome first for existing users, then checks Firefox without adding
+    /// an unrelated browser Keychain prompt.
     public static var longcatCookieImportOrder: BrowserCookieImportOrder? {
         #if os(macOS)
-        [.chrome]
+        [.chrome, .firefox]
         #else
         nil
         #endif

@@ -428,6 +428,9 @@
 "section_agent_sessions" = "Phiên tác nhân";
 "language_title" = "Ngôn ngữ";
 "language_subtitle" = "Thay đổi ngôn ngữ hiển thị. Yêu cầu khởi động lại ứng dụng để có hiệu lực đầy đủ.";
+"currency_title" = "Tiền tệ ưu tiên";
+"currency_subtitle" = "Tiền tệ dùng cho ước tính chi phí và chi tiêu. Sử dụng tỷ giá được cập nhật hằng ngày.";
+"currency_auto" = "Tự động (theo nhà cung cấp / USD)";
 "language_system" = "Hệ thống";
 "language_english" = "Tiếng Anh";
 "language_spanish" = "Español";
@@ -457,7 +460,7 @@
 "cost_history_window_title" = "Cửa sổ lịch sử";
 "cost_history_window_help" = "Đặt số ngày nhật ký sử dụng cục bộ xuất hiện trong menu.";
 "cost_history_days_title" = "Cửa sổ lịch sử: %d ngày";
-"cost_auto_refresh_info" = "Tự động làm mới: hàng giờ · Thời gian chờ: 10 phút";
+"cost_auto_refresh_info" = "Tự động làm mới: khoảng thời gian chung (tối thiểu 5 phút) · Thời gian chờ: 10 phút";
 "cost_comparison_periods_title" = "Hiển thị các khoảng so sánh ngắn hơn";
 "cost_comparison_periods_subtitle" = "Thêm tổng 7, 30 và 90 ngày khi nằm trong cửa sổ lịch sử đã chọn. Các tổng này dùng lại cùng một lần quét cục bộ.";
 "refresh_interval_title" = "Khoảng thời gian làm mới";
@@ -595,6 +598,12 @@
 "agent_sessions_subtitle" = "Hiển thị các phiên Codex và Claude Code cục bộ cùng các phiên được phát hiện qua SSH trong menu.";
 "agent_sessions_hosts_title" = "Máy chủ SSH bổ sung";
 "agent_sessions_footer" = "Các máy Mac trên tailnet của bạn được tự động phát hiện. Các phiên cục bộ được làm mới 30 giây một lần; các máy chủ từ xa được làm mới 60 giây một lần và khi menu mở.";
+"agent_session_labels_title" = "Nhãn phiên";
+"agent_session_labels_subtitle" = "Chọn cách đặt tên cho các phiên tác nhân.";
+"agent_session_label_project" = "Dự án";
+"agent_session_label_descriptive" = "Mô tả";
+"agent_session_label_descriptive_and_project" = "Mô tả + dự án";
+"agent_session_unknown_project" = "Dự án không xác định";
 
 /* Advanced Pane */
 "section_keyboard_shortcut" = "Phím tắt";
@@ -726,16 +735,19 @@
 "refresh_15min" = "15 phút";
 "refresh_30min" = "30 phút";
 "refresh_adaptive" = "Thích ứng";
+"refresh_adaptive_agent_aware" = "Thích ứng (nhận biết tác nhân)";
+"adaptive_activity_consent_title" = "Cho phép làm mới theo hoạt động?";
+"adaptive_activity_consent_message" = "Chế độ Thích ứng nhận biết tác nhân có thể kiểm tra danh sách tiến trình cục bộ đang chạy, bao gồm cả dòng lệnh, để nhận diện Codex và Claude, sau đó đọc siêu dữ liệu của các phiên đã biết mỗi 30 giây trong khi bạn viết mã. Khi tắt Agent Sessions, CodexBar chỉ dùng thời điểm hoạt động gần nhất trong bộ nhớ và loại bỏ đường dẫn cùng danh tính phiên. Dữ liệu này không được gửi đi đâu, còn tính năng phát hiện từ xa và SSH vẫn tắt. Nếu bạn từ chối, CodexBar trở về chế độ Thích ứng thông thường mà không quét hoạt động cục bộ.";
+"adaptive_activity_consent_allow" = "Cho phép hoạt động cục bộ";
+"adaptive_activity_consent_decline" = "Dùng Thích ứng thông thường";
 
 /* Additional keys */
 "not_found" = "Không tìm thấy";
 
 /* Cost estimation */
-"cost_header_estimated" = "Chi phí (ước tính)";
 "cost_estimate_hint" = "Ước tính từ nhật ký cục bộ · có thể khác với hóa đơn của bạn";
-"codex_api_estimate_header" = "Ước tính tương đương API";
-"codex_api_estimate_hint" = "Mức dùng cục bộ × giá API công khai · không phải hóa đơn đăng ký hoặc giá trị gói";
-"codex_api_estimate_not_billed" = "không phải hóa đơn đăng ký hoặc giá trị gói";
+"codex_api_estimate_hint" = "Ước tính từ mức sử dụng token · không phải hóa đơn đăng ký";
+"cost_data_explanation" = "Chi phí có thể do nhà cung cấp báo cáo hoặc được ước tính từ mức sử dụng token theo giá API công khai. Các ước tính không phải phí đăng ký.";
 "No JetBrains IDE with AI Assistant detected. Install a JetBrains IDE and enable AI Assistant." = "Không phát hiện thấy IDE JetBrains nào có Trợ lý AI. Cài đặt JetBrains IDE và bật Trợ lý AI.";
 "OpenRouter API token not configured. Set OPENROUTER_API_KEY environment variable or configure in Settings." = "OpenRouter API token chưa được định cấu hình. Đặt biến môi trường OPENROUTER_API_KEY hoặc định cấu hình trong Cài đặt .";
 "z.ai API token not found. Set apiKey in ~/.codexbar/config.json or Z_AI_API_KEY." = "không tìm thấy z.ai API token. Đặt apiKey trong ~/.codexbar/config.json hoặc Z_AI_API_KEY.";
@@ -765,6 +777,7 @@
 "Today" = "Hôm nay";
 "Today tokens" = "Mã thông báo hôm nay";
 "30d cost" = "giá 30d";
+"%@ cost" = "giá %@";
 "30d tokens" = "mã thông báo 30d";
 "Latest tokens" = "Mã thông báo mới nhất";
 "Top model" = "Mô hình hàng đầu";
@@ -1206,6 +1219,8 @@
 "section_links" = "Liên kết";
 "Show Codex Spark usage" = "Hiển thị mức sử dụng Codex Spark";
 "Shows Codex Spark quota rows in the menu and provider preview. Requires optional credits and extra usage in Display settings." = "Hiển thị các hàng hạn mức Codex Spark trong menu và bản xem trước của nhà cung cấp. Yêu cầu bật “Hiển thị tín dụng + mức sử dụng bổ sung” trong phần cài đặt Hiển thị.";
+"Show Daily Routines usage" = "Hiển thị mức sử dụng Quy trình hàng ngày";
+"Shows the Daily Routines quota row in the menu and provider preview. Requires optional credits and extra usage in Display settings." = "Hiển thị hàng hạn mức Quy trình hàng ngày trong menu và bản xem trước của nhà cung cấp. Yêu cầu bật “Hiển thị tín dụng + mức sử dụng bổ sung” trong phần cài đặt Hiển thị.";
 "Scroll to see more models" = "Cuộn để xem thêm mô hình";
 "Copy Image" = "Sao chép hình ảnh";
 "Copy Stats" = "Sao chép số liệu";
@@ -1259,3 +1274,79 @@
 "By subscription" = "Theo gói đăng ký";
 "No model-level history" = "Không có lịch sử theo mô hình";
 "Daily estimated spend" = "Chi tiêu ước tính hằng ngày";
+"≈%d full 5h windows of weekly left · %d windows until reset" = "Còn ≈%d cửa sổ 5 giờ đầy đủ của hạn mức tuần · %d cửa sổ đến khi đặt lại";
+"Weekly cannot run out before reset at this pace" = "Với tốc độ này, hạn mức tuần không thể hết trước khi đặt lại";
+"Weekly can run out ≈%d windows early" = "Hạn mức tuần có thể hết sớm ≈%d cửa sổ";
+"Estimated: %@" = "Ước tính: %@";
+"session_quota_estimate_value_format" = "%1$@ %2$@";
+"session quota" = "hạn mức phiên";
+"session quotas" = "hạn mức phiên";
+"Coding Plan" = "Gói lập trình";
+"Agent Plan" = "Gói tác nhân";
+"Team" = "Nhóm";
+
+/* Menu bar layout editor */
+"menu_bar_layout_title" = "Bố cục";
+"menu_bar_layout_footer" = "Kéo các thẻ để sắp xếp thanh menu. Bấm vào thẻ để thêm; chọn thẻ đã đặt rồi nhấn Delete để xóa.";
+"menu_bar_layout_group_identity" = "Danh tính";
+"menu_bar_layout_group_usage" = "Mức sử dụng";
+"menu_bar_layout_group_time" = "Thời gian";
+"menu_bar_layout_group_money" = "Chi phí";
+"menu_bar_layout_group_structure" = "Cấu trúc";
+"menu_bar_layout_scope_all" = "Tất cả nhà cung cấp";
+"menu_bar_layout_scope_help" = "Chỉnh sửa bố cục mặc định hoặc ghi đè cho một nhà cung cấp.";
+"menu_bar_layout_use_all" = "Dùng bố cục của mọi nhà cung cấp";
+"menu_bar_layout_preset" = "Mẫu bố cục";
+"menu_bar_layout_preset_icon_percent" = "Biểu tượng và phần trăm";
+"menu_bar_layout_preset_icon_only" = "Chỉ biểu tượng";
+"menu_bar_layout_preset_percent_reset" = "Phần trăm và đặt lại";
+"menu_bar_layout_preset_compact_stacked" = "Xếp chồng gọn";
+"menu_bar_layout_preset_custom" = "Tùy chỉnh";
+"menu_bar_layout_live_preview" = "Xem trước trực tiếp";
+"menu_bar_layout_strip" = "Dải thanh menu";
+"menu_bar_layout_remove_line_break" = "Xóa ngắt dòng";
+"menu_bar_layout_chip_hint" = "Chọn, kéo để sắp xếp lại hoặc dùng thao tác Xóa.";
+"menu_bar_layout_palette_hint" = "Bấm để thêm hoặc kéo vào bố cục.";
+"menu_bar_layout_empty_line" = "Thả một thẻ vào đây";
+"menu_bar_layout_line" = "Dòng %d";
+"menu_bar_layout_drag_remove" = "Kéo vào đây để xóa";
+"menu_bar_layout_size" = "Kích thước";
+"menu_bar_layout_size_small" = "Nhỏ";
+"menu_bar_layout_size_regular" = "Thường";
+"menu_bar_layout_gap" = "Khoảng cách";
+"menu_bar_layout_gap_tight" = "Hẹp";
+"menu_bar_layout_gap_regular" = "Thường";
+"menu_bar_layout_keyboard_hint" = "Delete xóa thẻ đã chọn";
+"menu_bar_layout_sample_account" = "tài khoản";
+"menu_bar_layout_sample_runs_out" = "hết vào T6";
+"menu_bar_layout_token_icon" = "Biểu tượng";
+"menu_bar_layout_token_provider" = "Tên nhà cung cấp";
+"menu_bar_layout_token_account" = "Tài khoản";
+"menu_bar_layout_token_session" = "Phiên %";
+"menu_bar_layout_token_weekly" = "Hàng tuần %";
+"menu_bar_layout_token_auto" = "% tự động";
+"menu_bar_layout_token_bar" = "Thanh sử dụng";
+"menu_bar_layout_token_resets_in" = "Đặt lại sau";
+"menu_bar_layout_token_reset_at" = "Đặt lại lúc";
+"menu_bar_layout_token_runs_out" = "Sắp hết";
+"menu_bar_layout_token_cost_today" = "Chi phí hôm nay";
+"menu_bar_layout_token_cost_30d" = "Chi phí 30 ngày";
+"menu_bar_layout_token_space" = "Khoảng trắng";
+"menu_bar_layout_token_line_break" = "Ngắt dòng";
+"menu_bar_layout_token_separator_accessibility" = "Dấu chấm phân cách";
+
+/* Menu bar layout accessibility */
+"Icon unavailable" = "Biểu tượng: Không có sẵn";
+"%@ icon" = "%@: Biểu tượng";
+"Provider name unavailable" = "Tên nhà cung cấp: Không có sẵn";
+"Account unavailable" = "Tài khoản: Không có sẵn";
+"%@ unavailable" = "%@: Không có sẵn";
+"%@ %@" = "%@ %@";
+"Usage bar unavailable" = "Thanh sử dụng: Không có sẵn";
+"Usage bar, %d of 3 filled" = "Thanh sử dụng: %d/3 đã tô";
+"Reset countdown unavailable" = "Đặt lại sau: Không có sẵn";
+"Reset time unavailable" = "Đặt lại lúc: Không có sẵn";
+"Run-out estimate unavailable" = "Sắp hết: Không có sẵn";
+"Cost today unavailable" = "Chi phí hôm nay: Không có sẵn";
+"30-day cost unavailable" = "Chi phí 30 ngày: Không có sẵn";
+"Resets" = "Lần đặt lại";

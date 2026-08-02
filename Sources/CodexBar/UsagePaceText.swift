@@ -9,6 +9,12 @@ enum UsagePaceText {
         let stage: UsagePace.Stage
     }
 
+    struct SessionEquivalentDetail: Equatable {
+        let leftText: String
+        let rightText: String
+        let accessibilityLabel: String
+    }
+
     private enum DetailContext {
         case session
         case weekly
@@ -28,6 +34,43 @@ enum UsagePaceText {
             rightLabel: self.detailRightLabel(for: pace, provider: provider, context: .weekly, now: now),
             expectedUsedPercent: pace.expectedUsedPercent,
             stage: pace.stage)
+    }
+
+    static func sessionEquivalentDetail(forecast: SessionEquivalentForecast) -> SessionEquivalentDetail {
+        let leftText = Self.sessionQuotaEstimateText(forecast.estimatedWindowsToExhaustWeekly)
+        let rightText = Self.windowsUntilResetText(forecast.windowsUntilReset)
+        return SessionEquivalentDetail(
+            leftText: leftText,
+            rightText: rightText,
+            accessibilityLabel: L("%@ · %@", leftText, rightText))
+    }
+
+    private static func sessionQuotaEstimateText(_ value: Double) -> String {
+        let displayedEstimate: String
+        let unit: String
+        if value.isFinite, value > 0 {
+            let boundedValue = min(value, 1_000_000)
+            let roundedValue = (boundedValue * 10).rounded() / 10
+            displayedEstimate = roundedValue.formatted(
+                .number
+                    .precision(.fractionLength(0...1))
+                    .locale(codexBarLocalizedLocale()))
+            unit = roundedValue > 0 && roundedValue <= 1 ? L("session quota") : L("session quotas")
+        } else {
+            displayedEstimate = codexBarLocalizedInteger(0)
+            unit = L("session quotas")
+        }
+        let estimateValue = L("session_quota_estimate_value_format", displayedEstimate, unit)
+        return L("Estimated: %@", L("%@ left", estimateValue))
+    }
+
+    private static func windowsUntilResetText(_ count: Int) -> String {
+        let combinedText = String(
+            format: L("≈%d full 5h windows of weekly left · %d windows until reset"),
+            locale: codexBarLocalizedResourceLocale(),
+            arguments: [0, count])
+        guard let separatorRange = combinedText.range(of: " · ") else { return combinedText }
+        return String(combinedText[separatorRange.upperBound...])
     }
 
     private static func detailLeftLabel(for pace: UsagePace) -> String {
@@ -96,8 +139,12 @@ enum UsagePaceText {
     private static func durationText(seconds: TimeInterval, now: Date) -> String {
         let date = now.addingTimeInterval(seconds)
         let countdown = UsageFormatter.resetCountdownDescription(from: date, now: now)
-        if countdown == "now" { return "now" }
-        if countdown.hasPrefix("in ") { return String(countdown.dropFirst(3)) }
+        if countdown == "now" {
+            return "now"
+        }
+        if countdown.hasPrefix("in ") {
+            return String(countdown.dropFirst(3))
+        }
         return countdown
     }
 
@@ -108,10 +155,18 @@ enum UsagePaceText {
     }
 
     static func sessionPace(provider: UsageProvider, window: RateWindow, now: Date) -> UsagePace? {
-        guard provider == .codex || provider == .claude || provider == .ollama || provider == .antigravity
+        guard provider == .codex || provider == .claude || provider == .ollama || provider == .antigravity ||
+            provider == .kimi
         else { return nil }
-        if provider == .ollama, window.windowMinutes == nil { return nil }
-        if provider == .antigravity, let windowMinutes = window.windowMinutes, windowMinutes != 300 { return nil }
+        if provider == .ollama, window.windowMinutes == nil {
+            return nil
+        }
+        if provider == .antigravity, let windowMinutes = window.windowMinutes, windowMinutes != 300 {
+            return nil
+        }
+        if provider == .kimi, window.windowMinutes != KimiProviderDescriptor.sessionWindowMinutes {
+            return nil
+        }
         guard window.remainingPercent > 0 else { return nil }
         guard let pace = UsagePace.weekly(window: window, now: now, defaultWindowMinutes: 300) else { return nil }
         guard pace.expectedUsedPercent >= 3 else { return nil }

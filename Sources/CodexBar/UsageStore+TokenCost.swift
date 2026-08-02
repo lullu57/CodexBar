@@ -243,9 +243,10 @@ extension UsageStore {
             }
             self.installCachedTokenSnapshot(result.snapshot, for: .codex)
             self.tokenErrors[.codex] = nil
-            if let lastRefreshAt = result.lastRefreshAt,
+            if let tokenFetchTTL = self.tokenFetchTTL,
+               let lastRefreshAt = result.lastRefreshAt,
                now.timeIntervalSince(lastRefreshAt) >= 0,
-               now.timeIntervalSince(lastRefreshAt) < self.tokenFetchTTL
+               now.timeIntervalSince(lastRefreshAt) < tokenFetchTTL
             {
                 self.lastTokenFetchAt[.codex] = lastRefreshAt
                 self.lastTokenFetchScope[.codex] = tokenSnapshotScopeSignature
@@ -341,7 +342,8 @@ extension UsageStore {
         else {
             return false
         }
-        return now.timeIntervalSince(last) < self.tokenFetchTTL
+        guard let tokenFetchTTL = self.tokenFetchTTL else { return false }
+        return now.timeIntervalSince(last) < tokenFetchTTL
     }
 
     func tokenRefreshPublicationIsCurrent(
@@ -401,6 +403,14 @@ extension UsageStore {
             snapshot?.openAIAPIUsage?.toCostUsageTokenSnapshot()
         case .mistral:
             snapshot?.mistralUsage?.toCostUsageTokenSnapshot(historyDays: self.settings.costUsageHistoryDays)
+        case .opencodego:
+            // Web-only source mode and machines with no readable local database leave
+            // `opencodegoUsage.daily` empty; a non-nil-but-dataless projection would still
+            // surface a Cost row whose history submenu has nothing to render.
+            snapshot?.opencodegoUsage.flatMap { usage in
+                usage.daily.isEmpty ? nil : usage
+                    .toCostUsageTokenSnapshot(historyDays: self.settings.costUsageHistoryDays)
+            }
         default:
             nil
         }
@@ -408,7 +418,7 @@ extension UsageStore {
 
     nonisolated static func tokenCostRequiresProviderSnapshot(_ provider: UsageProvider) -> Bool {
         switch provider {
-        case .mistral, .openai:
+        case .mistral, .openai, .opencodego:
             true
         default:
             false

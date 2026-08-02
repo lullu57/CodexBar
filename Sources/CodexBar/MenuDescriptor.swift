@@ -91,6 +91,7 @@ struct MenuDescriptor {
         updateReady: Bool,
         includeContextualActions: Bool = true,
         agentSessionsEnabled: Bool = false,
+        agentSessionLabelStyle: AgentSessionLabelStyle = .project,
         localAgentSessions: [AgentSession] = [],
         remoteAgentHosts: [RemoteSessionHostResult] = [],
         now: Date = Date()) -> MenuDescriptor
@@ -146,6 +147,7 @@ struct MenuDescriptor {
             sections.append(Self.agentSessionsSection(
                 localSessions: localAgentSessions,
                 remoteHosts: remoteAgentHosts,
+                labelStyle: agentSessionLabelStyle,
                 now: now))
         }
         sections.append(Self.metaSection(updateReady: updateReady))
@@ -156,6 +158,7 @@ struct MenuDescriptor {
     static func agentSessionsSection(
         localSessions: [AgentSession],
         remoteHosts: [RemoteSessionHostResult],
+        labelStyle: AgentSessionLabelStyle = .project,
         now: Date = Date()) -> Section
     {
         let totalCount = localSessions.count + remoteHosts.reduce(0) { $0 + $1.sessions.count }
@@ -163,7 +166,7 @@ struct MenuDescriptor {
 
         for session in localSessions {
             entries.append(.action(
-                self.agentSessionRowTitle(session, now: now),
+                self.agentSessionRowTitle(session, labelStyle: labelStyle, now: now),
                 .focusAgentSession(session, remoteHost: nil)))
         }
         for remoteHost in remoteHosts {
@@ -174,7 +177,7 @@ struct MenuDescriptor {
             entries.append(.text("\(remoteHost.host) — \(remoteHost.sessions.count)", .secondary))
             for session in remoteHost.sessions {
                 entries.append(.action(
-                    self.agentSessionRowTitle(session, now: now),
+                    self.agentSessionRowTitle(session, labelStyle: labelStyle, now: now),
                     .focusAgentSession(session, remoteHost: remoteHost.host)))
             }
         }
@@ -184,11 +187,15 @@ struct MenuDescriptor {
         return Section(entries: entries)
     }
 
-    private static func agentSessionRowTitle(_ session: AgentSession, now: Date) -> String {
+    private static func agentSessionRowTitle(
+        _ session: AgentSession,
+        labelStyle: AgentSessionLabelStyle,
+        now: Date) -> String
+    {
         let state = session.state == .active ? "●" : "○"
         let providerGlyph = session.provider == .codex ? "⌘" : "✦"
-        let project = session.projectName ?? "Unknown project"
-        return "\(state) \(providerGlyph) \(project) — \(session.provider.rawValue) · " +
+        let label = labelStyle.label(for: session)
+        return "\(state) \(providerGlyph) \(label) — \(session.provider.rawValue) · " +
             "\(session.source.rawValue) · \(self.agentSessionAge(session, now: now))"
     }
 
@@ -225,11 +232,13 @@ struct MenuDescriptor {
         if let snap = store.snapshot(for: provider) {
             let resetStyle = settings.resetTimeDisplayStyle
             let labels = Self.rateWindowLabels(provider: provider, metadata: meta, snapshot: snap)
+            let crofShowsCreditsOnly = provider == .crof && snap.secondary == nil
             if let primary = snap.primary {
                 let primaryDetail = primary.resetDescription?.trimmingCharacters(in: .whitespacesAndNewlines)
                 let primaryDescriptionIsDetail = provider == .warp || provider == .kilo || provider == .abacus ||
-                    provider == .deepseek || provider == .neuralwatt || provider == .azureopenai || provider == .mimo ||
-                    provider == .qoder || provider == .sub2api
+                    provider == .deepseek || provider == .deepinfra || provider == .neuralwatt ||
+                    provider == .azureopenai || provider == .mimo || provider == .qoder || provider == .sub2api ||
+                    crofShowsCreditsOnly || provider == .chutes
                 let primaryWindow = if primaryDescriptionIsDetail {
                     // Some providers use resetDescription for non-reset detail
                     // (e.g., "Unlimited", "X/Y credits"). Avoid rendering it as a "Resets ..." line.
@@ -255,10 +264,10 @@ struct MenuDescriptor {
                 }
                 if provider == .crof,
                    primary.resetsAt != nil,
-                   let detail = primary.resetDescription?.trimmingCharacters(in: .whitespacesAndNewlines),
-                   !detail.isEmpty
+                   let primaryDetail,
+                   !primaryDetail.isEmpty
                 {
-                    entries.append(.text(detail, .secondary))
+                    entries.append(.text(primaryDetail, .secondary))
                 }
                 if provider == .abacus,
                    let pace = store.weeklyPace(provider: provider, window: primary)
@@ -273,11 +282,11 @@ struct MenuDescriptor {
             if let weekly = snap.secondary {
                 let weeklyResetOverride: String? = {
                     guard provider == .warp || provider == .kilo || provider == .perplexity || provider == .crof ||
-                        provider == .sub2api
+                        provider == .sub2api || provider == .chutes
                     else { return nil }
                     let detail = weekly.resetDescription?.trimmingCharacters(in: .whitespacesAndNewlines)
                     guard let detail, !detail.isEmpty else { return nil }
-                    if provider == .kilo, weekly.resetsAt != nil {
+                    if [.kilo, .chutes].contains(provider), weekly.resetsAt != nil {
                         return nil
                     }
                     return detail
@@ -289,7 +298,7 @@ struct MenuDescriptor {
                     resetStyle: resetStyle,
                     showUsed: settings.usageBarsShowUsed,
                     resetOverride: weeklyResetOverride)
-                if provider == .kilo,
+                if [.kilo, .chutes].contains(provider),
                    weekly.resetsAt != nil,
                    let detail = weekly.resetDescription?.trimmingCharacters(in: .whitespacesAndNewlines),
                    !detail.isEmpty
@@ -318,7 +327,8 @@ struct MenuDescriptor {
             Self.appendProviderUsageSummaries(
                 entries: &entries,
                 snapshot: snap,
-                showOptionalUsage: settings.showOptionalCreditsAndExtraUsage)
+                showOptionalUsage: settings.showOptionalCreditsAndExtraUsage,
+                preferredCurrencyCode: settings.preferredCurrencyCode)
             if snap.rateLimitsUnavailable(for: provider) {
                 entries.append(.text(L("Limits not available"), .secondary))
             }
@@ -345,7 +355,8 @@ struct MenuDescriptor {
     private static func appendProviderUsageSummaries(
         entries: inout [Entry],
         snapshot: UsageSnapshot,
-        showOptionalUsage: Bool)
+        showOptionalUsage: Bool,
+        preferredCurrencyCode: String = "auto")
     {
         if let cost = snapshot.providerCost {
             if cost.currencyCode == "Quota" {
@@ -355,13 +366,22 @@ struct MenuDescriptor {
             }
         }
         if let openAIAPIUsage = snapshot.openAIAPIUsage {
-            Self.appendOpenAIAPIUsageSummary(entries: &entries, usage: openAIAPIUsage)
+            Self.appendOpenAIAPIUsageSummary(
+                entries: &entries,
+                usage: openAIAPIUsage,
+                preferredCurrencyCode: preferredCurrencyCode)
         }
         if let claudeAdminAPIUsage = snapshot.claudeAdminAPIUsage {
-            Self.appendClaudeAdminAPIUsageSummary(entries: &entries, usage: claudeAdminAPIUsage)
+            Self.appendClaudeAdminAPIUsageSummary(
+                entries: &entries,
+                usage: claudeAdminAPIUsage,
+                preferredCurrencyCode: preferredCurrencyCode)
         }
         if let openRouterUsage = snapshot.openRouterUsage {
-            Self.appendOpenRouterUsageSummary(entries: &entries, usage: openRouterUsage)
+            Self.appendOpenRouterUsageSummary(
+                entries: &entries,
+                usage: openRouterUsage,
+                preferredCurrencyCode: preferredCurrencyCode)
         }
         if let clawRouterUsage = snapshot.clawRouterUsage {
             entries.append(.text(
@@ -379,13 +399,27 @@ struct MenuDescriptor {
             Self.appendWayfinderUsageSummary(entries: &entries, usage: wayfinderUsage)
         }
         if let poeUsage = snapshot.poeUsage, !poeUsage.daily.isEmpty {
-            Self.appendPoeUsageSummary(entries: &entries, usage: poeUsage)
+            Self.appendPoeUsageSummary(
+                entries: &entries,
+                usage: poeUsage,
+                preferredCurrencyCode: preferredCurrencyCode)
         }
         if let mistralUsage = snapshot.mistralUsage, !mistralUsage.daily.isEmpty {
-            Self.appendMistralUsageSummary(entries: &entries, usage: mistralUsage)
+            Self.appendMistralUsageSummary(
+                entries: &entries,
+                usage: mistralUsage,
+                preferredCurrencyCode: preferredCurrencyCode)
         }
         if let mimoUsage = snapshot.mimoUsage {
             entries.append(.text("\(L("Balance")): \(mimoUsage.balanceDetail)", .primary))
+        }
+        if let xaiUsage = snapshot.xaiUsage {
+            entries.append(.text("\(L("Balance")): \(UsageFormatter.usdString(xaiUsage.balanceUSD))", .primary))
+            if !xaiUsage.daily.isEmpty {
+                entries.append(.text(
+                    "\(xaiUsage.historyWindowPeriodLabel): \(UsageFormatter.usdString(xaiUsage.windowCostUSD))",
+                    .secondary))
+            }
         }
         // Sakana pay-as-you-go is optional data gated by "Show optional credits and extra usage".
         // Gate the render on the setting too, not just the fetch: toggling the setting off only
@@ -394,8 +428,12 @@ struct MenuDescriptor {
         if showOptionalUsage, let sakanaPayAsYouGo = snapshot.sakanaPayAsYouGo {
             entries.append(.text("\(L("Balance")): \(sakanaPayAsYouGo.balanceDetail)", .primary))
             if let periodUsageTotal = sakanaPayAsYouGo.periodUsageTotal {
+                let cost = UsageFormatter.convertedCostString(
+                    periodUsageTotal,
+                    preferredCurrency: preferredCurrencyCode,
+                    providerCurrency: "USD")
                 entries.append(.text(
-                    "\(L("Usage")): \(UsageFormatter.usdString(periodUsageTotal))",
+                    "\(L("Usage")): \(cost)",
                     .secondary))
             }
         }
@@ -544,12 +582,14 @@ struct MenuDescriptor {
         let targetProvider = provider ?? store.enabledProviders().first
         let metadata = targetProvider.map { store.metadata(for: $0) }
         let fallbackAccount = targetProvider.map { store.accountInfo(for: $0) } ?? account
+        let hasAccount = self.hasAccount(for: targetProvider, store: store, account: fallbackAccount)
         let loginContext = targetProvider.map {
             ProviderMenuLoginContext(
                 provider: $0,
                 store: store,
                 settings: store.settings,
-                account: fallbackAccount)
+                account: fallbackAccount,
+                hasAccount: hasAccount)
         }
 
         // Show "Add Account" if no account, "Switch Account" if logged in
@@ -563,7 +603,6 @@ struct MenuDescriptor {
                 entries.append(.action(override.label, override.action))
             } else {
                 let loginAction = self.switchAccountTarget(for: provider, store: store)
-                let hasAccount = self.hasAccount(for: provider, store: store, account: fallbackAccount)
                 let accountLabel = hasAccount ? L("Switch Account...") : L("Add Account...")
                 entries.append(.action(accountLabel, loginAction))
             }
@@ -639,8 +678,15 @@ struct MenuDescriptor {
 
     private static func hasAccount(for provider: UsageProvider?, store: UsageStore, account: AccountInfo) -> Bool {
         let target = provider ?? store.enabledProviders().first ?? .codex
-        if let email = store.snapshot(for: target)?.accountEmail(for: target),
+        let snapshot = store.snapshot(for: target)
+        if let email = snapshot?.accountEmail(for: target),
            !email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        {
+            return true
+        }
+        if target == .claude,
+           snapshot?.identity(for: .claude) != nil,
+           snapshot?.hasRateLimitWindows == true
         {
             return true
         }
@@ -664,16 +710,29 @@ struct MenuDescriptor {
         }
         let primaryLabel = if provider == .grok {
             GrokProviderDescriptor.primaryLabel(window: snapshot.primary) ?? metadata.sessionLabel
+        } else if provider == .crof {
+            CrofProviderDescriptor.primaryLabel(snapshot: snapshot)
         } else if provider == .doubao {
             DoubaoProviderDescriptor.primaryLabel(window: snapshot.primary) ?? metadata.sessionLabel
         } else if provider == .sub2api {
             Sub2APIProviderDescriptor.primaryLabel(details: snapshot.sub2APIUsage) ?? metadata.sessionLabel
+        } else if provider == .amp {
+            AmpProviderDescriptor.primaryLabel(details: snapshot.ampUsage) ?? metadata.sessionLabel
+        } else if provider == .alibabatokenplan {
+            AlibabaTokenPlanProviderDescriptor.primaryLabel(window: snapshot.primary) ?? metadata.sessionLabel
         } else {
             metadata.sessionLabel
         }
+        let secondaryLabel = if provider == .amp {
+            AmpProviderDescriptor.secondaryLabel(details: snapshot.ampUsage) ?? metadata.weeklyLabel
+        } else if provider == .alibabatokenplan {
+            AlibabaTokenPlanProviderDescriptor.secondaryLabel(window: snapshot.secondary) ?? metadata.weeklyLabel
+        } else {
+            metadata.weeklyLabel
+        }
         return (
             L(primaryLabel),
-            L(metadata.weeklyLabel),
+            L(secondaryLabel),
             metadata.opusLabel.map(L) ?? L("Sonnet"),
             metadata.supportsOpus)
     }

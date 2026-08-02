@@ -382,7 +382,7 @@ struct ProviderMetricsInlineView: View {
         let hasMetrics = !self.model.metrics.isEmpty
         let hasUsageNotes = !self.model.usageNotes.isEmpty
         let infoRows = Self.infoRows(for: self.model, openAIWebDiagnostic: self.openAIWebDiagnostic)
-        let hasProviderCost = self.model.providerCost != nil
+        let hasProviderCost = self.model.providerCost?.showsInProviderDetails == true
         let hasTokenUsage = self.model.tokenUsage != nil
         let hasResetCredits = self.model.codexResetCredits != nil
 
@@ -418,19 +418,18 @@ struct ProviderMetricsInlineView: View {
                 ProviderCodexResetCreditsInlineRow(presentation: resetCredits)
             }
 
-            if let providerCost = self.model.providerCost {
+            if let providerCost = self.model.providerCost, providerCost.showsInProviderDetails {
                 ProviderMetricInlineCostRow(
                     section: providerCost,
                     progressColor: self.model.progressColor)
             }
 
             if let tokenUsage = self.model.tokenUsage {
-                let isCodexEstimate = self.model.provider == .codex
                 ProviderMetricInlineTextRow(
-                    title: isCodexEstimate ? L("codex_api_estimate_header") : L("Cost"),
+                    title: L("Cost"),
                     value: tokenUsage.sessionLine)
                 ProviderMetricInlineTextRow(title: "", value: tokenUsage.monthLine)
-                if isCodexEstimate, let hint = tokenUsage.hintLine, !hint.isEmpty {
+                if self.model.provider == .codex, let hint = tokenUsage.hintLine, !hint.isEmpty {
                     ProviderMetricInlineTextRow(title: "", value: hint)
                 }
             }

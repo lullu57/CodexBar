@@ -23,6 +23,7 @@ enum ProviderImplementationRegistry {
         case .opencodego: OpenCodeGoProviderImplementation()
         case .alibaba: AlibabaCodingPlanProviderImplementation()
         case .alibabatokenplan: AlibabaTokenPlanProviderImplementation()
+        case .qwencloud: QwenCloudProviderImplementation()
         case .factory: FactoryProviderImplementation()
         case .gemini: GeminiProviderImplementation()
         case .antigravity: AntigravityProviderImplementation()
@@ -54,6 +55,7 @@ enum ProviderImplementationRegistry {
         case .abacus: AbacusProviderImplementation()
         case .mistral: MistralProviderImplementation()
         case .deepseek: DeepSeekProviderImplementation()
+        case .deepinfra: DeepInfraProviderImplementation()
         case .codebuff: CodebuffProviderImplementation()
         case .crof: CrofProviderImplementation()
         case .venice: VeniceProviderImplementation()
@@ -74,6 +76,9 @@ enum ProviderImplementationRegistry {
         case .sub2api: Sub2APIProviderImplementation()
         case .wayfinder: WayfinderProviderImplementation()
         case .zenmux: ZenMuxProviderImplementation()
+        case .aiand: AiAndProviderImplementation()
+        case .zoommate: ZoomMateProviderImplementation()
+        case .xai: XAIProviderImplementation()
         }
     }
 

@@ -55,11 +55,13 @@ See `docs/configuration.md` for the schema.
   - `--brief` renders a compact table (Provider / Usage / Reset) instead of the card grid.
   - Stdout is always rendered text; `--json-output` only affects stderr logs (no JSON card payload).
   - Failed providers are summarized in a footer (not rendered as error cards).
-  - When the opt-in Claude claude-swap integration returns two or more accounts, cards renders every account in
-    active-first/slot order instead of the ambient or token-account Claude cards. This applies on macOS and Linux,
-    including an explicit `--provider claude`; `--source auto` remains eligible.
+  - When the opt-in Claude claude-swap integration returns two or more accounts—or one account with
+    `claudeSwapShowSingleAccount` enabled—cards renders every account in active-first/slot order instead of the
+    ambient or token-account Claude cards. This applies on macOS and Linux, including an explicit
+    `--provider claude`; `--source auto` remains eligible.
   - `--account`, `--account-index`, `--all-accounts`, and explicit non-auto source flags preserve their requested
-    ambient behavior and do not invoke claude-swap. Zero/one-account lists likewise retain ambient Claude output.
+    ambient behavior and do not invoke claude-swap. Zero-account lists always retain ambient Claude output;
+    one-account lists do so unless `claudeSwapShowSingleAccount` is enabled.
   - claude-swap sentinel accounts remain successful cards with their problem text and no fabricated usage metrics.
     A list adapter, parser, or timeout failure retains useful ambient Claude output, adds a distinct
     `Claude (claude-swap)` failure footer entry, and makes the command exit non-zero.
@@ -88,6 +90,18 @@ See `docs/configuration.md` for the schema.
   - `--cookies --provider <id>` removes browser-cookie cache entries for that provider, including managed Codex account scopes.
   - `--cost` removes local cost-usage scan caches.
   - `--all` clears both cookies and cost caches. `--provider` is cookie-only and cannot be combined with `--cost` or `--all`.
+- `codexbar cookie refresh` ignores the provider's current cookie caches while importing a replacement through its web strategy. A failed or interrupted import leaves existing cookies intact.
+  - Choose exactly one of `--provider <id>` or `--all`; provider support comes from shared browser-cookie metadata rather than a fixed CLI list.
+  - Prompt-capable Chromium imports require `--allow-keychain-prompt`. Without it, the command fails before cache mutation with an interactive-retry hint.
+  - A six-hour Keychain-denial cooldown is bypassed only by that explicit acknowledgment flag. Output never includes cookie values.
+  - Providers configured for Manual or Off cookie sources are skipped.
+- `codexbar guard --provider <id>` gates automation on one provider's remaining quota.
+  - `--min-remaining <percent>` sets the inclusive threshold (default: `10`; valid range: `0...100`).
+  - `--window session|weekly` selects the primary/session window or secondary/weekly window (default: `session`).
+  - `--timeout <seconds>` bounds the complete fetch (range: `0...86400`; default: `60`; `0` disables this guard-level deadline while provider-specific timeouts still apply).
+  - `--json` emits the provider, window, remaining quota, threshold, decision, unavailable reason, and exit code; add `--pretty` for formatted JSON.
+  - Stable guard exit codes: `0` means safe, `1` means below threshold, `64` (`EX_USAGE`) means invalid arguments, and `69` (`EX_UNAVAILABLE`) means the quota could not be checked or the selected window is unavailable. `--fail-open` changes only unavailable results from `69` to `0`; JSON still reports `decision: "unknown"` and the reason.
+  - Guard fetches are read-only and use background interaction policy, matching `codexbar usage`; they never request interactive Keychain access.
 - `--provider <id|both|all>` (default: enabled providers in config; falls back to defaults when missing).
   - Provider IDs live in the config file (see `docs/configuration.md`).
   - With three or more providers enabled, the default stays scoped to enabled providers; use `--provider all` to query
@@ -102,12 +116,13 @@ See `docs/configuration.md` for the schema.
     - `web`: web-only where that provider exposes an explicit web source; no CLI/API fallback. Browser import is macOS-only, while supported providers can use configured manual cookies on Linux.
     - `cli`: CLI/local-helper source where the provider exposes one (for example Codex RPC/PTy, Claude PTY, Kilo CLI fallback, Kiro CLI, local probes).
     - `oauth`: OAuth-backed source where supported (Codex, Claude, Vertex AI).
-    - `api`: API-key/token flow when the provider supports it (OpenAI, Claude Admin API, z.ai, Gemini, Alibaba, Copilot, Kilo, Kimi, MiniMax, Ollama, Warp, OpenRouter, ElevenLabs, Deepgram, Synthetic, DeepSeek, Moonshot, Doubao, Codebuff, Crof, Venice, AWS Bedrock).
+    - `api`: API-key/token flow when the provider supports it (OpenAI, Claude Admin API, z.ai, Gemini, Alibaba, Copilot, Kilo, Kimi, MiniMax, Ollama, Warp, OpenRouter, ElevenLabs, Deepgram, Synthetic, DeepSeek, DeepInfra, Moonshot, Doubao, Codebuff, Crof, Venice, AWS Bedrock).
     - Output `source` reflects the strategy actually used (`openai-web`, `web`, `oauth`, `api`, `local`, `cli`, or provider CLI label).
     - Codex web: OpenAI web dashboard (usage limits, credits remaining, code review remaining, usage breakdown).
         - `--web-timeout <seconds>` (default: 60)
         - `--web-debug-dump-html` (writes HTML snapshots to `/tmp` when data is missing)
-    - Claude web: claude.ai API (session + weekly usage, plus account metadata when available).
+    - Claude web: claude.ai API (session + weekly usage, account metadata, and prepaid Usage credits balance when
+      available).
     - Command Code web: commandcode.ai browser session cookies on macOS, or a configured manual cookie on Linux, for monthly credit usage.
     - OpenCode Go auto: local SQLite usage on macOS and Linux, with optional manual-cookie web enrichment.
     - Kilo auto: app.kilo.ai API first, then CLI auth fallback (`~/.local/share/kilo/auth.json`) on missing/unauthorized API credentials.
@@ -163,6 +178,7 @@ codexbar cost                     # cost usage (default 30-day window + today)
 codexbar cost --days 90           # choose a 1...365 day cost window
 codexbar cost --provider codex --group-by project
 codexbar cost --provider claude --format json --pretty
+codexbar guard --provider codex --min-remaining 20 --window weekly --json
 codexbar cost --provider cursor   # Cursor dashboard cost (API-rate + Cursor-metered)
 codexbar serve --port 8080        # localhost HTTP JSON server
 codexbar serve --request-timeout 0 # disable serve request deadlines
@@ -186,6 +202,7 @@ codexbar config enable --provider grok
 codexbar cache clear --cookies
 codexbar cache clear --cookies --provider claude
 codexbar cache clear --all --format json --pretty
+codexbar cookie refresh --provider opencodego --allow-keychain-prompt
 ```
 
 ### Sample output (text)

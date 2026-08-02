@@ -132,13 +132,18 @@ struct SettingsStoreCoverageTests {
 
         let initial = Self.makeSettingsStore(userDefaults: defaults, configStore: configStore)
         #expect(initial.agentSessionsEnabled == false)
+        #expect(initial.agentSessionLabelStyle == .project)
         #expect(defaults.object(forKey: "agentSessionsEnabled") == nil)
+        #expect(defaults.object(forKey: "agentSessionLabelStyle") == nil)
 
         initial.agentSessionsEnabled = true
+        initial.agentSessionLabelStyle = .descriptiveAndProject
         #expect(defaults.object(forKey: "agentSessionsEnabled") as? Bool == true)
+        #expect(defaults.string(forKey: "agentSessionLabelStyle") == "descriptiveAndProject")
 
         let reloaded = Self.makeSettingsStore(userDefaults: defaults, configStore: configStore)
         #expect(reloaded.agentSessionsEnabled)
+        #expect(reloaded.agentSessionLabelStyle == .descriptiveAndProject)
     }
 
     @Test
@@ -813,6 +818,21 @@ struct SettingsStoreCoverageTests {
         #expect(defaults.object(forKey: "weeklyProgressWorkDays") == nil)
         let reloaded4 = Self.makeSettingsStore(userDefaults: defaults, configStore: configStore)
         #expect(reloaded4.weeklyProgressWorkDays == nil)
+    }
+
+    @Test
+    func `preferred currency defaults to USD and persists an explicit selection`() throws {
+        let suite = "SettingsStoreCoverageTests-preferred-currency"
+        let defaults = try #require(UserDefaults(suiteName: suite))
+        defaults.removePersistentDomain(forName: suite)
+        let configStore = testConfigStore(suiteName: suite)
+
+        let fresh = Self.makeSettingsStore(userDefaults: defaults, configStore: configStore)
+        #expect(fresh.preferredCurrencyCode == "USD")
+
+        fresh.preferredCurrencyCode = "GBP"
+        let reloaded = Self.makeSettingsStore(userDefaults: defaults, configStore: configStore)
+        #expect(reloaded.preferredCurrencyCode == "GBP")
     }
 
     private static func makeSettingsStore(

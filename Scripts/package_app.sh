@@ -305,6 +305,19 @@ cat > "$APP/Contents/Info.plist" <<PLIST
     <key>CodexBarAppGroupID</key><string>${APP_GROUP_ID}</string>
     <key>CodexBarKeychainService</key><string>${KEYCHAIN_SERVICE}</string>
     <key>CodexBarLogSubsystem</key><string>${LOG_SUBSYSTEM}</string>
+    <key>UTExportedTypeDeclarations</key>
+    <array>
+        <dict>
+            <key>UTTypeIdentifier</key><string>com.steipete.codexbar.menu-layout-item</string>
+            <key>UTTypeDescription</key><string>CodexBar menu bar layout token</string>
+            <key>UTTypeConformsTo</key>
+            <array>
+                <string>public.data</string>
+            </array>
+            <key>UTTypeTagSpecification</key>
+            <dict/>
+        </dict>
+    </array>
 </dict>
 </plist>
 PLIST

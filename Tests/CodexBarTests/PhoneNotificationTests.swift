@@ -13,7 +13,7 @@ struct PhoneNotificationTests {
 
         #expect(request.url?.absoluteString == "https://ntfy.sh/codexbar-test-topic")
         #expect(request.httpMethod == "POST")
-        #expect(String(data: try #require(request.httpBody), encoding: .utf8) == "Remaining 0%.")
+        #expect(try String(data: #require(request.httpBody), encoding: .utf8) == "Remaining 0%.")
         #expect(request.value(forHTTPHeaderField: "Title") == "Codex depleted")
         #expect(request.value(forHTTPHeaderField: "Priority") == "high")
     }

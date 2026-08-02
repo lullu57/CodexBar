@@ -25,7 +25,7 @@ struct NotificationsPane: View {
                             "ntfy topic",
                             text: self.$settings.phoneNotificationTopic,
                             prompt: Text("e.g. codexbar-your-random-topic"))
-                        .textFieldStyle(.roundedBorder)
+                            .textFieldStyle(.roundedBorder)
 
                         HStack {
                             Text("Subscribe to this exact topic in the ntfy app.")
@@ -35,7 +35,8 @@ struct NotificationsPane: View {
                             Button("Send test") {
                                 PhoneNotifications.shared.sendTest(topic: self.settings.phoneNotificationTopic)
                             }
-                            .disabled(self.settings.phoneNotificationTopic.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                            .disabled(self.settings.phoneNotificationTopic
+                                .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                         }
                     }
                     .padding(.leading, 22)

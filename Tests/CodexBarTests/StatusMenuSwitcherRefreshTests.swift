@@ -183,6 +183,8 @@ struct StatusMenuSwitcherRefreshTests {
 
     @Test
     func `merged provider switch updates live tab rows in place`() async throws {
+        StatusItemController.setCodexAccountMenuProjectionRevalidationEnabledForTesting(false)
+        defer { StatusItemController.resetCodexAccountMenuProjectionRevalidationEnabledForTesting() }
         let previousMenuCardRendering = StatusItemController.menuCardRenderingEnabled
         StatusItemController.menuCardRenderingEnabled = false
         StatusItemController.setMenuRefreshEnabledForTesting(true)

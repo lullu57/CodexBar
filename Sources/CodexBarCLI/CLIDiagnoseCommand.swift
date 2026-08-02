@@ -227,12 +227,16 @@ extension CodexBarCLI {
             ChutesSettingsReader.apiKey(environment: environment) != nil
         case .zenmux:
             ZenMuxSettingsReader.managementAPIKey(environment: environment) != nil
+        case .aiand:
+            AiAndSettingsReader.apiKey(environment: environment) != nil
         case .crof:
             CrofSettingsReader.apiKey(environment: environment) != nil
         case .deepgram:
             DeepgramSettingsReader.apiKey(environment: environment) != nil
         case .deepseek:
             DeepSeekSettingsReader.apiKey(environment: environment) != nil
+        case .deepinfra:
+            DeepInfraSettingsReader.apiKey(environment: environment) != nil
         case .doubao:
             DoubaoSettingsReader.apiKey(environment: environment) != nil
         case .elevenlabs:
@@ -279,6 +283,8 @@ extension CodexBarCLI {
             VeniceSettingsReader.apiKey(environment: environment) != nil
         case .warp:
             WarpSettingsReader.apiKey(environment: environment) != nil
+        case .xai:
+            XAISettingsReader.apiKey(environment: environment) != nil
         case .zai:
             ZaiSettingsReader.apiToken(environment: environment) != nil
         default:
@@ -293,6 +299,8 @@ extension CodexBarCLI {
         switch provider {
         case .alibabatokenplan:
             AlibabaTokenPlanSettingsReader.cookieHeader(environment: environment) != nil
+        case .qwencloud:
+            QwenCloudSettingsReader.cookieHeader(environment: environment) != nil
         case .kimi:
             KimiSettingsReader.authToken(environment: environment) != nil
         case .manus:

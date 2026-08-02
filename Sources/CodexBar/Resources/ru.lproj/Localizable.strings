@@ -431,6 +431,9 @@
 "section_agent_sessions" = "Сеансы агентов";
 "language_title" = "Язык";
 "language_subtitle" = "Изменяет язык интерфейса. Для полного применения нужен перезапуск приложения.";
+"currency_title" = "Предпочитаемая валюта";
+"currency_subtitle" = "Валюта для оценки затрат и расходов. Используются курсы, обновляемые ежедневно.";
+"currency_auto" = "Автоматически (валюта провайдера / USD)";
 "language_system" = "Системный";
 "language_english" = "English";
 "language_spanish" = "Español";
@@ -462,7 +465,7 @@
 "cost_history_window_title" = "Окно истории";
 "cost_history_window_help" = "Задаёт, за сколько дней показывать локальные журналы использования в меню.";
 "cost_history_days_title" = "Окно истории: %d дней";
-"cost_auto_refresh_info" = "Автоматическое обновление: каждый час · Тайм-аут: 10 минут";
+"cost_auto_refresh_info" = "Автоматическое обновление: общий интервал (минимум 5 минут) · Тайм-аут: 10 минут";
 "cost_comparison_periods_title" = "Показывать более короткие периоды сравнения";
 "cost_comparison_periods_subtitle" = "Добавляет итоги за 7, 30 и 90 дней, если они входят в выбранный период истории. Для этих итогов используется то же локальное сканирование.";
 "refresh_interval_title" = "Частота обновления";
@@ -600,6 +603,12 @@
 "agent_sessions_subtitle" = "Показывать в меню локальные и обнаруженные по SSH сеансы Codex и Claude Code.";
 "agent_sessions_hosts_title" = "Дополнительные SSH-хосты";
 "agent_sessions_footer" = "Компьютеры Mac в вашей сети tailnet обнаруживаются автоматически. Локальные сеансы обновляются каждые 30 секунд, удалённые хосты — каждые 60 секунд и при открытии меню.";
+"agent_session_labels_title" = "Названия сеансов";
+"agent_session_labels_subtitle" = "Выберите, как называть сеансы агентов.";
+"agent_session_label_project" = "Проект";
+"agent_session_label_descriptive" = "Описательное";
+"agent_session_label_descriptive_and_project" = "Описательное + проект";
+"agent_session_unknown_project" = "Неизвестный проект";
 
 /* Advanced Pane */
 "section_keyboard_shortcut" = "Сочетание клавиш";
@@ -731,16 +740,19 @@
 "refresh_15min" = "15 мин.";
 "refresh_30min" = "30 мин.";
 "refresh_adaptive" = "Адаптивно";
+"refresh_adaptive_agent_aware" = "Адаптивно (с учётом агентов)";
+"adaptive_activity_consent_title" = "Разрешить обновление с учётом активности?";
+"adaptive_activity_consent_message" = "Адаптивный режим с учётом агентов может проверять список запущенных локальных процессов, включая командные строки, чтобы распознавать Codex и Claude, а затем во время программирования каждые 30 секунд считывать метаданные известных сеансов. Когда Agent Sessions отключено, CodexBar хранит в памяти только время последней активности и отбрасывает пути и идентификаторы сеансов. Эти данные никуда не отправляются, а удалённое обнаружение и SSH остаются отключёнными. При отказе CodexBar вернётся к обычному адаптивному режиму без сканирования локальной активности.";
+"adaptive_activity_consent_allow" = "Разрешить локальную активность";
+"adaptive_activity_consent_decline" = "Использовать обычный адаптивный режим";
 
 /* Additional keys */
 "not_found" = "Не найден";
 
 /* Cost estimation */
-"cost_header_estimated" = "Стоимость (оценочная)";
 "cost_estimate_hint" = "Оценка на основе локальных журналов · может отличаться от суммы в счёте.";
-"codex_api_estimate_header" = "Оценка, эквивалентная API";
-"codex_api_estimate_hint" = "Локальное использование × публичные цены API · это не счёт за подписку и не ценность плана";
-"codex_api_estimate_not_billed" = "это не счёт за подписку и не ценность плана";
+"codex_api_estimate_hint" = "Расчёт по использованию токенов · не счёт за подписку";
+"cost_data_explanation" = "Расходы могут быть предоставлены провайдером или рассчитаны по использованию токенов на основе общедоступных цен API. Оценки не являются платой за подписку.";
 "No JetBrains IDE with AI Assistant detected. Install a JetBrains IDE and enable AI Assistant." = "JetBrains IDE с включённым AI Assistant не обнаружена. Установите JetBrains IDE и включите AI Assistant.";
 "OpenRouter API token not configured. Set OPENROUTER_API_KEY environment variable or configure in Settings." = "API-токен OpenRouter не настроен. Задайте переменную окружения OPENROUTER_API_KEY или настройте его в настройках.";
 "z.ai API token not found. Set apiKey in ~/.codexbar/config.json or Z_AI_API_KEY." = "API-токен z.ai не найден. Задайте apiKey в ~/.codexbar/config.json или Z_AI_API_KEY.";
@@ -770,6 +782,7 @@
 "Today" = "Сегодня";
 "Today tokens" = "Токены сегодня";
 "30d cost" = "Стоимость за 30 дн.";
+"%@ cost" = "Стоимость за %@";
 "30d tokens" = "Токены за 30 дн.";
 "Latest tokens" = "Последние токены";
 "Top model" = "Топ-модель";
@@ -1212,6 +1225,8 @@
 "section_links" = "Ссылки";
 "Show Codex Spark usage" = "Показывать использование Codex Spark";
 "Shows Codex Spark quota rows in the menu and provider preview. Requires optional credits and extra usage in Display settings." = "Показывает строки квот Codex Spark в меню и предварительном просмотре провайдера. Требует включить «Показывать кредиты и доп. использование» в настройках «Отображение».";
+"Show Daily Routines usage" = "Показывать использование ежедневных задач";
+"Shows the Daily Routines quota row in the menu and provider preview. Requires optional credits and extra usage in Display settings." = "Показывает строку квоты ежедневных задач в меню и предварительном просмотре провайдера. Требует включить «Показывать кредиты и доп. использование» в настройках «Отображение».";
 "Scroll to see more models" = "Прокрутите, чтобы увидеть больше моделей";
 "Copy Image" = "Копировать изображение";
 "Copy Stats" = "Копировать статистику";
@@ -1260,3 +1275,79 @@
 "By subscription" = "По подпискам";
 "No model-level history" = "Нет истории по моделям";
 "Daily estimated spend" = "Предполагаемые ежедневные расходы";
+"≈%d full 5h windows of weekly left · %d windows until reset" = "≈%d полных 5-часовых окон недельного лимита · %d окон до сброса";
+"Weekly cannot run out before reset at this pace" = "При таком темпе недельный лимит не может закончиться до сброса";
+"Weekly can run out ≈%d windows early" = "Недельный лимит может закончиться на ≈%d окон раньше";
+"Estimated: %@" = "Оценка: %@";
+"session_quota_estimate_value_format" = "%1$@ %2$@";
+"session quota" = "лимит сессии";
+"session quotas" = "лимиты сессий";
+"Coding Plan" = "План программирования";
+"Agent Plan" = "План агента";
+"Team" = "Команда";
+
+/* Menu bar layout editor */
+"menu_bar_layout_title" = "Компоновка";
+"menu_bar_layout_footer" = "Перетаскивайте элементы, чтобы настроить строку меню. Нажмите элемент, чтобы добавить его; выберите размещённый элемент и нажмите Delete, чтобы удалить его.";
+"menu_bar_layout_group_identity" = "Идентификация";
+"menu_bar_layout_group_usage" = "Использование";
+"menu_bar_layout_group_time" = "Время";
+"menu_bar_layout_group_money" = "Стоимость";
+"menu_bar_layout_group_structure" = "Структура";
+"menu_bar_layout_scope_all" = "Все провайдеры";
+"menu_bar_layout_scope_help" = "Измените компоновку по умолчанию или переопределите её для одного провайдера.";
+"menu_bar_layout_use_all" = "Использовать компоновку всех провайдеров";
+"menu_bar_layout_preset" = "Шаблон компоновки";
+"menu_bar_layout_preset_icon_percent" = "Значок и процент";
+"menu_bar_layout_preset_icon_only" = "Только значок";
+"menu_bar_layout_preset_percent_reset" = "Процент и сброс";
+"menu_bar_layout_preset_compact_stacked" = "Компактно в две строки";
+"menu_bar_layout_preset_custom" = "Пользовательский";
+"menu_bar_layout_live_preview" = "Предпросмотр";
+"menu_bar_layout_strip" = "Строка меню";
+"menu_bar_layout_remove_line_break" = "Удалить разрыв строки";
+"menu_bar_layout_chip_hint" = "Выберите, перетащите для изменения порядка или используйте действие удаления.";
+"menu_bar_layout_palette_hint" = "Нажмите, чтобы добавить, или перетащите в компоновку.";
+"menu_bar_layout_empty_line" = "Перетащите элемент сюда";
+"menu_bar_layout_line" = "Строка %d";
+"menu_bar_layout_drag_remove" = "Перетащите сюда для удаления";
+"menu_bar_layout_size" = "Размер";
+"menu_bar_layout_size_small" = "Маленький";
+"menu_bar_layout_size_regular" = "Обычный";
+"menu_bar_layout_gap" = "Интервал";
+"menu_bar_layout_gap_tight" = "Узкий";
+"menu_bar_layout_gap_regular" = "Обычный";
+"menu_bar_layout_keyboard_hint" = "Delete удаляет выбранный элемент";
+"menu_bar_layout_sample_account" = "аккаунт";
+"menu_bar_layout_sample_runs_out" = "закончится пт.";
+"menu_bar_layout_token_icon" = "Значок";
+"menu_bar_layout_token_provider" = "Имя провайдера";
+"menu_bar_layout_token_account" = "Аккаунт";
+"menu_bar_layout_token_session" = "Сеанс %";
+"menu_bar_layout_token_weekly" = "Недельный %";
+"menu_bar_layout_token_auto" = "Авто %";
+"menu_bar_layout_token_bar" = "Индикатор использования";
+"menu_bar_layout_token_resets_in" = "Сброс через";
+"menu_bar_layout_token_reset_at" = "Сброс в";
+"menu_bar_layout_token_runs_out" = "Закончится";
+"menu_bar_layout_token_cost_today" = "Расход сегодня";
+"menu_bar_layout_token_cost_30d" = "Расход за 30 дней";
+"menu_bar_layout_token_space" = "Пробел";
+"menu_bar_layout_token_line_break" = "Разрыв строки";
+"menu_bar_layout_token_separator_accessibility" = "Точка-разделитель";
+
+/* Menu bar layout accessibility */
+"Icon unavailable" = "Значок: Недоступно";
+"%@ icon" = "%@: Значок";
+"Provider name unavailable" = "Имя провайдера: Недоступно";
+"Account unavailable" = "Аккаунт: Недоступно";
+"%@ unavailable" = "%@: Недоступно";
+"%@ %@" = "%@ %@";
+"Usage bar unavailable" = "Индикатор использования: Недоступно";
+"Usage bar, %d of 3 filled" = "Индикатор использования: %d/3 заполнено";
+"Reset countdown unavailable" = "Сброс через: Недоступно";
+"Reset time unavailable" = "Сброс в: Недоступно";
+"Run-out estimate unavailable" = "Закончится: Недоступно";
+"Cost today unavailable" = "Расход сегодня: Недоступно";
+"30-day cost unavailable" = "Расход за 30 дней: Недоступно";
+"Resets" = "Сбросы";
