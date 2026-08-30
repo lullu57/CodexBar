@@ -9,13 +9,14 @@ Read CodexBar. Never mutate config/auth.
 
 ## Run
 
-```bash
-skill="${CODEX_HOME:-$HOME/.codex}/skills/codexbar"
-"$skill/scripts/codexbar" doctor
-"$skill/scripts/codexbar" providers
-"$skill/scripts/codexbar" usage
-"$skill/scripts/codexbar" usage --provider codex
-"$skill/scripts/codexbar" usage --all
+Resolve the directory containing this `SKILL.md`, then run the helper with the available Python 3 command (`python3` or `python`):
+
+```text
+python3 <skill-directory>/scripts/codexbar doctor
+python3 <skill-directory>/scripts/codexbar providers
+python3 <skill-directory>/scripts/codexbar usage
+python3 <skill-directory>/scripts/codexbar usage --provider codex
+python3 <skill-directory>/scripts/codexbar usage --all
 ```
 
 All stdout: JSON. Upstream CodexBar shape kept. Less drift, fewer tokens.
